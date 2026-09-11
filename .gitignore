@@ -1,0 +1,13 @@
+# Environment files and credentials
+.env
+.env.local
+.env.*.local
+
+# Nginx generated credentials and certificates
+nginx/.htpasswd
+nginx/certs/*.pem
+!nginx/certs/.gitkeep
+
+# Logs and runtime files
+*.log
+scratch/
