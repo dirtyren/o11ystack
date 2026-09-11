@@ -78,22 +78,22 @@ flowchart TD
     ProcFS --> ProcExp
     ServerLogs --> OTelCol
 
-    NodeExp -->|Metrics Scrape| OTelCol
-    ProcExp -->|Metrics Scrape| OTelCol
-    Beyla -->|OTLP eBPF Spans| OTelCol
+    NodeExp -->|"Metrics Scrape"| OTelCol
+    ProcExp -->|"Metrics Scrape"| OTelCol
+    Beyla -->|"OTLP eBPF Spans"| OTelCol
 
-    OTelCol -->|Prometheus Remote Write| VMetrics
-    OTelCol -->|OTLP HTTP Logs| VLogs
-    OTelCol -->|OTLP gRPC Spans| VTraces
+    OTelCol -->|"Prometheus Remote Write"| VMetrics
+    OTelCol -->|"OTLP HTTP Logs"| VLogs
+    OTelCol -->|"OTLP gRPC Spans"| VTraces
 
     %% Database backing
     MySQL --> Grafana
     Postgres --> LiteLLM
 
     %% Datasources into Grafana
-    VMetrics -->|Prometheus Datasource| Grafana
-    VLogs -->|VictoriaLogs Datasource| Grafana
-    VTraces -->|Tempo/Jaeger Datasource| Grafana
+    VMetrics -->|"Prometheus Datasource"| Grafana
+    VLogs -->|"VictoriaLogs Datasource"| Grafana
+    VTraces -->|"Tempo/Jaeger Datasource"| Grafana
 
     %% MCP connections to storage & dashboards
     VMetrics --> MCP_VM
@@ -108,11 +108,11 @@ flowchart TD
     MCP_GF --> LiteLLM
 
     %% Ingress access
-    Nginx -->|/vmetrics (Basic Auth)| VMetrics
-    Nginx -->|/vlogs (Basic Auth)| VLogs
-    Nginx -->|/vtraces (Basic Auth)| VTraces
-    Nginx -->|/grafana| Grafana
-    Nginx -->|/litellm| LiteLLM
+    Nginx -->|"/vmetrics (Basic Auth)"| VMetrics
+    Nginx -->|"/vlogs (Basic Auth)"| VLogs
+    Nginx -->|"/vtraces (Basic Auth)"| VTraces
+    Nginx -->|"/grafana"| Grafana
+    Nginx -->|"/litellm"| LiteLLM
 ```
 
 ---
