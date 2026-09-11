@@ -177,6 +177,8 @@ AURA operates with an **Orchestrator Coordinator** that analyzes user prompts an
 ### Telemetry & Tracing
 AURA sends its internal execution spans (subagent turns, tool invocations, and reasoning steps) directly to the OpenTelemetry Collector via `OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4317"`. These traces are stored in **VictoriaTraces**, allowing SREs to inspect the AI's step-by-step reasoning within Grafana.
 
+> 📖 **Comprehensive AURA Guide**: See [**README-AURA.md**](README-AURA.md) for full interactive terminal usage, REST API integrations (curl / Python), real-world SRE use cases, and Grafana trace auditing.
+
 ---
 
 ## Giving LiteLLM Access to Models
@@ -718,6 +720,7 @@ docker compose down -v
 ├── .env.example                           # Configuration environment template
 ├── .gitignore                             # Git ignore rules for secrets
 ├── README.md                              # This documentation
+├── README-AURA.md                         # Dedicated Mezmo AURA SRE Agent guide & use cases
 ├── Prompt.md                              # Master AI recreation prompt for this stack
 ├── aura/
 │   └── config.toml                        # Mezmo AURA multi-agent coordinator & worker config
