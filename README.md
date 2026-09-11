@@ -18,9 +18,10 @@ A complete, production-grade observability and AI orchestration stack running on
 - [Architecture & Data Flow](#architecture--data-flow)
 - [Stack Components](#stack-components)
 - [Mezmo AURA SRE AI Agent](#mezmo-aura-sre-ai-agent)
-- [Free & Open LLM Models](#free--open-llm-models)
+- [Giving LiteLLM Access to Models](#giving-litellm-access-to-models)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
+- [Configuration Reference (.env.example)](#configuration-reference-envexample)
 - [Security & Access Control](#security--access-control)
 - [Storage & Retention](#storage--retention)
 - [Grafana Datasources & Pre-Installed Dashboards](#grafana-datasources--pre-installed-dashboards)
@@ -178,35 +179,214 @@ AURA sends its internal execution spans (subagent turns, tool invocations, and r
 
 ---
 
-## Free & Open LLM Models
+## Giving LiteLLM Access to Models
 
-The stack comes pre-provisioned in `litellm/config.yaml` with free and zero-cost model options so you can start investigating without paid API quotas:
+LiteLLM functions as the unified AI Gateway for the entire observability stack. It handles authentication, load balancing, rate limiting, token usage tracking, and connects both human operators and autonomous agents (like Mezmo AURA) to any LLM provider.
 
-| Model ID | Provider | Cost | Description | Required Environment Variable |
-| :--- | :--- | :--- | :--- | :--- |
-| `aura-sre-model` | OpenRouter | **Free** | Default SRE model alias mapped to Llama 3.3 70B Free | `OPENROUTER_API_KEY` |
-| `openrouter-llama-3.3-70b-free` | OpenRouter | **Free** | `meta-llama/llama-3.3-70b-instruct:free` (128k context) | `OPENROUTER_API_KEY` |
-| `openrouter-deepseek-r1-free` | OpenRouter | **Free** | `deepseek/deepseek-r1:free` (DeepSeek reasoning model) | `OPENROUTER_API_KEY` |
-| `openrouter-gemini-flash-free` | OpenRouter | **Free** | `google/gemini-2.0-flash-exp:free` (Fast multimodal reasoning) | `OPENROUTER_API_KEY` |
-| `openrouter-qwen-coder-free` | OpenRouter | **Free** | `qwen/qwen-2.5-coder-32b-instruct:free` (Code analysis) | `OPENROUTER_API_KEY` |
-| `gemini-2.0-flash` | Google AI | **Free Tier** | Official Gemini 2.0 Flash (15 RPM / 1M TPM free tier) | `GEMINI_API_KEY` |
-| `groq-llama-3.3-70b` | GroqCloud | **Free Tier** | Llama 3.3 70B Versatile on Groq LPUs (ultra-fast tokens/sec) | `GROQ_API_KEY` |
-| `ollama-llama3` | Local Host | **Free (100%)** | Fully offline inference via local Ollama instance | `OLLAMA_API_BASE` |
-| `mock-model` | Internal Mock | **Free (Zero Key)** | Mock responses for offline integration testing | None |
+### How Model Authentication Works
 
-### Setting Up Your Free LLM Key
-1. Get a free API key:
-   - **OpenRouter** (Recommended): [openrouter.ai](https://openrouter.ai/) (Free tier models require $0 balance).
-   - **Google AI Studio**: [aistudio.google.com](https://aistudio.google.com/) (Generous 15 RPM free tier).
-   - **GroqCloud**: [console.groq.com](https://console.groq.com/) (Free inference tier).
-2. Set the key in `.env`:
+Credentials flow through a secure 3-stage pipeline:
+1. **Secrets stored in `.env`**: API keys and endpoint URLs are kept strictly in `.env` (`chmod 600`), never hardcoded in git.
+2. **Passed via `docker-compose.yml`**: Docker injects keys as environment variables into the `litellm` container.
+3. **Resolved in `litellm/config.yaml`**: LiteLLM references keys dynamically using `os.environ/<KEY_NAME>`, or queries credentials stored in its PostgreSQL database (`store_model_in_db: true`).
+
+```mermaid
+flowchart LR
+    ENV[".env (Keys & URLs)"] -->|Environment Injection| COMPOSE["docker-compose.yml"]
+    COMPOSE -->|Container Env| LITELLM["LiteLLM Gateway (:4000)"]
+    LITELLM -->|"os.environ/*"| CONFIG["litellm/config.yaml"]
+    LITELLM -->|"Dynamic Models"| DB[("PostgreSQL DB")]
+    LITELLM -->|"OpenAI-Compatible API (/v1)"| AURA["Mezmo AURA SRE Agent"]
+    LITELLM -->|"Web UI & Playground"| ADMIN["Admin Dashboard (/litellm/ui/)"]
+```
+
+---
+
+### Pre-Configured Models Matrix
+
+The stack comes pre-configured with free, local, commercial, and mock models:
+
+| Model Alias | Provider | Cost / Tier | Context | Description | Required `.env` Variable |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `aura-sre-model` | OpenRouter | **Free** | 128k | Default SRE model alias mapped to Llama 3.3 70B Free | `OPENROUTER_API_KEY` |
+| `openrouter-llama-3.3-70b-free` | OpenRouter | **Free** | 128k | `meta-llama/llama-3.3-70b-instruct:free` | `OPENROUTER_API_KEY` |
+| `openrouter-deepseek-r1-free` | OpenRouter | **Free** | 64k | `deepseek/deepseek-r1:free` (Reasoning model) | `OPENROUTER_API_KEY` |
+| `openrouter-gemini-flash-free` | OpenRouter | **Free** | 1M | `google/gemini-2.0-flash-exp:free` (Multimodal) | `OPENROUTER_API_KEY` |
+| `openrouter-qwen-coder-free` | OpenRouter | **Free** | 32k | `qwen/qwen-2.5-coder-32b-instruct:free` | `OPENROUTER_API_KEY` |
+| `gemini-2.0-flash` | Google AI | **Free Tier** | 1M | Google Gemini 2.0 Flash (15 RPM / 1M TPM free tier) | `GEMINI_API_KEY` |
+| `groq-llama-3.3-70b` | GroqCloud | **Free Tier** | 128k | Llama 3.3 70B Versatile on ultra-fast Groq LPUs | `GROQ_API_KEY` |
+| `ollama-llama3` | Local Host | **Free (100%)** | Local | Offline local inference via Ollama (Zero API keys) | `OLLAMA_API_BASE` |
+| `gpt-4o` | OpenAI | Paid / Tier | 128k | OpenAI flagship GPT-4o model | `OPENAI_API_KEY` |
+| `gpt-4o-mini` | OpenAI | Low-Cost | 128k | Lightweight, cost-efficient GPT-4o mini | `OPENAI_API_KEY` |
+| `claude-3-5-sonnet` | Anthropic | Paid / Tier | 200k | Anthropic Claude 3.5 Sonnet | `ANTHROPIC_API_KEY` |
+| `mock-model` | Internal Mock | **Free (Zero Key)** | 16k | Built-in mock for offline integration testing | None (Works immediately) |
+
+---
+
+### Step-by-Step: Providing Model Access
+
+#### Option 1: Free Cloud Providers (Zero-Cost, No Credit Card Required)
+
+1. **OpenRouter (Recommended)**:
+   - Create a free account at [openrouter.ai](https://openrouter.ai/).
+   - Generate an API key with $0 balance at [openrouter.ai/keys](https://openrouter.ai/keys).
+   - In `.env`, set:
+     ```bash
+     OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+     ```
+   - This unlocks 5 free models: `aura-sre-model`, `openrouter-llama-3.3-70b-free`, `openrouter-deepseek-r1-free`, `openrouter-gemini-flash-free`, and `openrouter-qwen-coder-free`.
+
+2. **Google AI Studio (Gemini Free Tier)**:
+   - Obtain a key from [aistudio.google.com](https://aistudio.google.com/) (free tier allows up to 15 Requests Per Minute and 1M Tokens Per Minute).
+   - In `.env`, set:
+     ```bash
+     GEMINI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+     ```
+   - This unlocks `gemini-2.0-flash`.
+
+3. **GroqCloud (Ultra-Fast Inference Free Tier)**:
+   - Obtain a key from [console.groq.com](https://console.groq.com/).
+   - In `.env`, set:
+     ```bash
+     GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+     ```
+   - This unlocks `groq-llama-3.3-70b`.
+
+#### Option 2: Local Offline Inference with Ollama (100% Private, Zero API Keys)
+
+Run LLMs directly on the host machine without any network egress:
+
+1. Install and start [Ollama](https://ollama.com/) on the host:
    ```bash
-   OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxx
+   # Pull the desired model
+   ollama run llama3.2
    ```
-3. Restart LiteLLM and AURA:
+2. By default, Ollama listens on `127.0.0.1:11434`. To allow Docker containers to access it, ensure Ollama binds to all interfaces:
+   ```bash
+   # On Linux systemd service:
+   # Add Environment="OLLAMA_HOST=0.0.0.0:11434" to /etc/systemd/system/ollama.service
+   systemctl daemon-reload && systemctl restart ollama
+   ```
+3. In `.env`, configure the base URL:
+   ```bash
+   OLLAMA_API_BASE=http://host.docker.internal:11434
+   ```
+   *(Or specify the host IP directly, e.g. `http://172.17.0.1:11434`)*.
+
+#### Option 3: Commercial & Enterprise Cloud Providers
+
+To enable standard proprietary LLMs, add your respective keys to `.env`:
+
+```bash
+# OpenAI
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxx
+
+# Anthropic
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxx
+
+# Mistral AI
+MISTRAL_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxx
+
+# Amazon Bedrock
+AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxxxxx
+AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+AWS_REGION_NAME=us-east-1
+
+# Azure OpenAI
+AZURE_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+AZURE_API_BASE=https://your-resource-name.openai.azure.com/
+AZURE_API_VERSION=2024-08-01-preview
+```
+
+#### Option 4: Zero-Key Testing (`mock-model`)
+
+If you don't have any API keys configured yet, LiteLLM includes `mock-model`. It returns instant, deterministic mock responses for end-to-end testing of AURA, LiteLLM, and reverse proxy routing without requiring internet access or credentials.
+
+---
+
+### Directing Mezmo AURA to Use a Model
+
+Mezmo AURA reads its LLM model from the `AURA_MODEL` environment variable. To change which model AURA uses for investigations:
+
+1. Set `AURA_MODEL` in `.env` to any valid model alias from the matrix above:
+   ```bash
+   # Use OpenRouter free Llama 3.3 (default)
+   AURA_MODEL=aura-sre-model
+
+   # Or switch to Google Gemini Flash
+   AURA_MODEL=gemini-2.0-flash
+
+   # Or switch to Groq ultra-fast Llama 3.3
+   AURA_MODEL=groq-llama-3.3-70b
+
+   # Or switch to OpenAI GPT-4o
+   AURA_MODEL=gpt-4o
+
+   # Or switch to offline mock model
+   AURA_MODEL=mock-model
+   ```
+
+2. Apply the change:
    ```bash
    docker compose up -d litellm aura
    ```
+
+---
+
+### Verifying Model Access via CLI
+
+Test your models directly from the command line using the LiteLLM API:
+
+```bash
+source .env
+
+# 1. List all registered models
+curl -k -s -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
+  https://localhost/litellm/models | jq '.data[].id'
+
+# 2. Test chat completion on a specific model (e.g. mock-model)
+curl -k -s -X POST https://localhost/litellm/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
+  -d '{
+    "model": "mock-model",
+    "messages": [{"role": "user", "content": "System status check"}]
+  }' | jq .
+
+# 3. Test chat completion on a live cloud model (e.g. gemini-2.0-flash)
+curl -k -s -X POST https://localhost/litellm/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
+  -d '{
+    "model": "gemini-2.0-flash",
+    "messages": [{"role": "user", "content": "Reply with PONG"}]
+  }' | jq .
+
+# 4. Trigger Mezmo AURA SRE investigation using the configured AURA_MODEL
+curl -k -s -X POST https://localhost/aura/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{"role": "user", "content": "Inspect recent database error rates across logs and metrics."}]
+  }' | jq .
+```
+
+---
+
+### LiteLLM Admin UI & Interactive Playground
+
+LiteLLM includes an interactive web dashboard accessible via Nginx:
+
+1. Open **`https://<server>/litellm/ui/`** in your browser.
+2. Sign in with:
+   - **Username**: `admin`
+   - **Password**: Your `LITELLM_MASTER_KEY` configured in `.env`
+3. Features available in the UI:
+   - **Models**: View all loaded models, test latency, and check status.
+   - **Add Model**: Dynamically add new models or provider keys at runtime without editing configuration files or restarting containers (persisted automatically to PostgreSQL).
+   - **Playground**: Test prompts and models directly from an interactive chat interface.
+   - **API Keys**: Generate scoped virtual API keys with spend limits and rate limits for individual teams or applications.
+   - **Logs & Analytics**: Inspect token usage, costs per model, and latency histograms.
+
 
 ---
 
@@ -240,6 +420,49 @@ chmod +x deploy.sh
 > ```bash
 > ./deploy.sh --reconfigure
 > ```
+
+---
+
+## Configuration Reference (`.env.example`)
+
+The stack uses a single `.env` file (copied from `.env.example` or initialized interactively by `deploy.sh`) to centrally configure server networking, storage directories, database passwords, security keys, and LLM credentials.
+
+### Environment Variables Directory
+
+| Variable | Default / Format | Category | Description |
+| :--- | :--- | :--- | :--- |
+| `SERVER_HOST` | `localhost` | Server & Network | Domain or IP address used in Nginx SSL certificates and reverse proxy links. |
+| `SERVER_PROTOCOL` | `https` | Server & Network | Web access protocol (`https` recommended, SSL enabled by default). |
+| `HTTP_PORT` | `80` | Server & Network | Inbound host HTTP port, automatically redirected to HTTPS. |
+| `HTTPS_PORT` | `443` | Server & Network | Inbound host HTTPS port terminating TLS/SSL. |
+| `VLOGS_DATA_PATH` | `/var/lib/vlogs` | Storage & Retention | Host storage directory for VictoriaLogs (retains logs for 1 year). |
+| `VMETRICS_DATA_PATH` | `/var/lib/vmetrics` | Storage & Retention | Host storage directory for VictoriaMetrics TSDB (retains metrics for 1 year). |
+| `VTRACES_DATA_PATH` | `/var/lib/vtraces` | Storage & Retention | Host storage directory for VictoriaTraces (retains traces for 1 year). |
+| `BASIC_AUTH_USER` | `admin` | Security | Basic Auth username guarding `/vmetrics`, `/vlogs`, and `/vtraces` web interfaces. |
+| `BASIC_AUTH_PASSWORD` | `changeme_basic_auth` | Security | Basic Auth password stored in encrypted `nginx/.htpasswd`. |
+| `GRAFANA_ADMIN_USER` | `admin` | Grafana | Initial administrator username for Grafana web portal. |
+| `GRAFANA_ADMIN_PASSWORD` | `changeme_grafana_admin` | Grafana | Initial administrator password for Grafana web portal. |
+| `MYSQL_ROOT_PASSWORD` | `changeme_mysql_root` | Backend Databases | Root password for MySQL 8.0 backing Grafana. |
+| `GRAFANA_DB_PASSWORD` | `changeme_grafana_db` | Backend Databases | Dedicated user password for Grafana's `grafana` database. |
+| `POSTGRES_USER` | `litellm` | Backend Databases | Dedicated PostgreSQL user for LiteLLM. |
+| `POSTGRES_PASSWORD` | `changeme_postgres_litellm` | Backend Databases | PostgreSQL password for LiteLLM key storage and audit logging. |
+| `LITELLM_MASTER_KEY` | `sk-litellm-master-key-...` | LiteLLM Gateway | Bearer token for LiteLLM Admin UI login (`admin`) and secure MCP / REST APIs. |
+| `AURA_MODEL` | `aura-sre-model` | Mezmo AURA AI | Active LLM model alias consumed by Mezmo AURA SRE Agent from LiteLLM. |
+| `OPENROUTER_API_KEY` | *(empty)* | Free Tier LLM | OpenRouter API key unlocking free Llama 3.3 70B, DeepSeek R1, Qwen, and Gemini Flash. |
+| `GEMINI_API_KEY` | *(empty)* | Free Tier LLM | Google AI Studio API key for `gemini-2.0-flash` (15 RPM / 1M TPM free tier). |
+| `GROQ_API_KEY` | *(empty)* | Free Tier LLM | GroqCloud API key for `groq-llama-3.3-70b` (ultra-fast inference free tier). |
+| `OLLAMA_API_BASE` | `http://host.docker.internal:11434` | Local Offline LLM | Base URL to a local Ollama instance running on the host machine. |
+| `OPENAI_API_KEY` | *(empty)* | Commercial LLM (Optional) | OpenAI API key for `gpt-4o` and `gpt-4o-mini`. |
+| `ANTHROPIC_API_KEY` | *(empty)* | Commercial LLM (Optional) | Anthropic API key for `claude-3-5-sonnet`. |
+| `MISTRAL_API_KEY` | *(empty)* | Commercial LLM (Optional) | Mistral API key for Mistral models. |
+| `COHERE_API_KEY` | *(empty)* | Commercial LLM (Optional) | Cohere API key for Command-R/Command-R+ models. |
+| `AWS_ACCESS_KEY_ID` | *(empty)* | Enterprise LLM (Optional) | AWS Access Key ID for Amazon Bedrock models. |
+| `AWS_SECRET_ACCESS_KEY` | *(empty)* | Enterprise LLM (Optional) | AWS Secret Access Key for Amazon Bedrock models. |
+| `AWS_REGION_NAME` | *(empty)* | Enterprise LLM (Optional) | AWS Region (e.g., `us-east-1`) for Amazon Bedrock models. |
+| `AZURE_API_KEY` | *(empty)* | Enterprise LLM (Optional) | Azure OpenAI API key. |
+| `AZURE_API_BASE` | *(empty)* | Enterprise LLM (Optional) | Azure OpenAI endpoint URL (`https://<resource>.openai.azure.com/`). |
+| `AZURE_API_VERSION` | *(empty)* | Enterprise LLM (Optional) | Azure OpenAI API version (e.g., `2024-08-01-preview`). |
+| `GRAFANA_SERVICE_ACCOUNT_TOKEN` | *(auto-generated)* | Grafana MCP | Admin Service Account token auto-generated by `deploy.sh` for `mcp-grafana`. |
 
 ---
 
