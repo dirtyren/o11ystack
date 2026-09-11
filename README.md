@@ -23,6 +23,7 @@ A complete, production-grade observability and AI orchestration stack running on
 - [Quick Start](#quick-start)
 - [Security & Access Control](#security--access-control)
 - [Storage & Retention](#storage--retention)
+- [Grafana Datasources & Pre-Installed Dashboards](#grafana-datasources--pre-installed-dashboards)
 - [Model Context Protocol (MCP) Integration](#model-context-protocol-mcp-integration)
 - [OpenTelemetry & eBPF Auto-Instrumentation](#opentelemetry--ebpf-auto-instrumentation)
 - [Verifying the Deployment](#verifying-the-deployment)
@@ -275,6 +276,35 @@ Directories on the host (`/var/lib/vlogs`, `/var/lib/vmetrics`, `/var/lib/vtrace
 
 ---
 
+## Grafana Datasources & Pre-Installed Dashboards
+
+Grafana automatically provisions datasources and dashboards on container startup.
+
+### Pre-Configured Datasources
+
+All core backends are wired into Grafana through [`grafana/provisioning/datasources/datasources.yaml`](grafana/provisioning/datasources/datasources.yaml):
+
+| Datasource Name | UID | Plugin Type | URL | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **VictoriaMetrics** | `victoriametrics` | `prometheus` *(Default)* | `http://victoriametrics:8428` | Primary TSDB datasource with PromQL support and POST query execution. |
+| **VictoriaLogs** | `victorialogs` | `victoriametrics-logs-datasource` | `http://victorialogs:9428` | Official [VictoriaLogs plugin](https://github.com/VictoriaMetrics/victorialogs-datasource) for LogsQL exploring and filtering. |
+| **VictoriaTraces** | `victoriatraces` | `tempo` | `http://victoriatraces:10428/select/tempo` | Distributed trace searching and waterfall span inspection, linked to VictoriaLogs via traceID. |
+| **VictoriaTraces-Jaeger** | `victoriatraces-jaeger` | `jaeger` | `http://victoriatraces:10428/select/jaeger` | Native Jaeger API endpoint for alternative trace exploration. |
+
+### Pre-Installed Dashboards
+
+All 5 core dashboards are pre-installed in the **Observability** folder via [`grafana/provisioning/dashboards/`](grafana/provisioning/dashboards/):
+
+| Dashboard Name | Grafana ID | UID | Scope |
+| :--- | :--- | :--- | :--- |
+| **Node Exporter Full** | `1860` | `node-exporter-full` | Host CPU, Memory, Disk I/O, Network, and System Load. |
+| **Process Exporter with Treemap** | `13882` | `process-exporter-treemap` | Per-process CPU, memory, thread counts, and file descriptors. |
+| **VictoriaMetrics - Single-Node** | `10229` | `victoriametrics-single-node` | Ingestion rate, active time series, cache hit ratio, and disk usage. |
+| **VictoriaLogs - Single-Node** | `22084` | `victorialogs-single-node` | Ingestion throughput, log block compression, and query performance. |
+| **VictoriaTraces - Single-Node** | `24136` | `victoriatraces-single-node` | Span ingestion rate, trace storage, and search latency. |
+
+---
+
 ## Model Context Protocol (MCP) Integration
 
 All four MCP servers run as standalone services within the private Docker network and are registered with **LiteLLM**, which serves as an authenticated **MCP Gateway & Hub**:
@@ -367,8 +397,13 @@ The setup script (`scripts/setup-grafana-mcp.sh`) automatically:
 The OpenTelemetry Collector (`otel-collector`) runs with three pipelines:
 
 1. **Metrics Pipeline**:
-   - **Receivers**: Prometheus receiver scrapes `node-exporter:9100` and `process-exporter:9256`.
-   - **Exporter**: `prometheusremotewrite` exports metrics directly to `http://victoriametrics:8428/api/v1/write`.
+   - **Receivers**: Prometheus receiver scrapes:
+     - `node-exporter:9100` (host metrics)
+     - `process-exporter:9256` (per-process telemetry)
+     - `victoriametrics:8428` (VictoriaMetrics internal metrics)
+     - `victorialogs:9428` (VictoriaLogs internal metrics)
+     - `victoriatraces:10428` (VictoriaTraces internal metrics)
+   - **Exporter**: `prometheusremotewrite` exports all metrics directly to `http://victoriametrics:8428/api/v1/write`.
 2. **Logs Pipeline**:
    - **Receivers**: `filelog` receiver tails `/var/log/**/*.log`, `/var/log/syslog`, and `/var/log/messages`.
    - **Exporter**: `otlphttp/logs` ships logs formatted to VictoriaLogs at `http://victorialogs:9428/insert/opentelemetry/v1/logs`.
@@ -389,9 +424,9 @@ source .env
 # 1. Verify Nginx Landing Page
 curl -k -s -o /dev/null -w "%{http_code}\n" https://localhost/
 
-# 2. Check Metrics Ingestion in VictoriaMetrics
+# 2. Check Metrics Ingestion in VictoriaMetrics (Host & Victoria Self-Monitoring)
 curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
-  "https://localhost/vmetrics/api/v1/label/__name__/values" | grep "node_"
+  "https://localhost/vmetrics/api/v1/label/__name__/values" | grep -E "node_|vm_app_version"
 
 # 3. Check Server Logs Ingestion in VictoriaLogs
 curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
@@ -403,15 +438,19 @@ curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
 
 # 5. Check Grafana Datasources Provisioning
 curl -k -s -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
-  "https://localhost/grafana/api/datasources"
+  "https://localhost/grafana/api/datasources" | jq -r '.[] | "\(.name) (\(.type)) -> \(.url)"'
 
-# 6. Check LiteLLM Readiness
+# 6. Check Grafana Pre-Installed Dashboards
+curl -k -s -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+  "https://localhost/grafana/api/search" | jq -r '.[] | "\(.uid): \(.title)"'
+
+# 7. Check LiteLLM Readiness
 curl -k -s https://localhost/litellm/health/readiness
 
-# 7. Check Mezmo AURA SRE Agent Health
+# 8. Check Mezmo AURA SRE Agent Health
 curl -k -s https://localhost/aura/health | jq .
 
-# 8. Query Mezmo AURA SRE Agent via OpenAI-compatible endpoint
+# 9. Query Mezmo AURA SRE Agent via OpenAI-compatible endpoint
 curl -k -s -X POST https://localhost/aura/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"Run a complete system observability check across metrics, logs, and traces."}]}' | jq .
@@ -460,6 +499,9 @@ docker compose down -v
 │   └── config.toml                        # Mezmo AURA multi-agent coordinator & worker config
 ├── grafana/
 │   └── provisioning/
+│       ├── dashboards/
+│       │   ├── dashboards.yaml            # Dashboard provider definition
+│       │   └── definitions/               # Pre-installed dashboards (1860, 13882, 10229, 22084, 24136)
 │       └── datasources/
 │           └── datasources.yaml           # Automated datasource definitions
 ├── litellm/

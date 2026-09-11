@@ -10,6 +10,19 @@ receivers:
           scrape_interval: 15s
           static_configs:
             - targets: ['process-exporter:9256']
+        - job_name: 'victoriametrics'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['victoriametrics:8428']
+        - job_name: 'victorialogs'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['victorialogs:9428']
+        - job_name: 'victoriatraces'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['victoriatraces:10428']
+
 
   filelog:
     include:
