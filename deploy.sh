@@ -350,7 +350,7 @@ show_summary() {
     echo -e "  * VictoriaLogs UI:         ${CYAN}${base_url}/vlogs/select/vmui/${NC}   ${YELLOW}(Basic Auth)${NC}"
     echo -e "  * VictoriaTraces UI:       ${CYAN}${base_url}/vtraces/select/vmui/${NC} ${YELLOW}(Basic Auth)${NC}"
     echo -e "  * LiteLLM Proxy API / UI:  ${CYAN}${base_url}/litellm/${NC}"
-    echo -e "  * Mezmo AURA SRE Agent:    ${CYAN}${base_url}/aura/${NC}"
+    echo -e "  * Mezmo AURA SRE Agent:    ${CYAN}${base_url}/aura/${NC}   ${YELLOW}(Basic Auth)${NC}"
 
     echo -e "\n${BOLD}Model Context Protocol (MCP) Endpoints (configured in LiteLLM):${NC}"
     echo -e "  * VictoriaMetrics MCP:     ${CYAN}http://mcp-victoriametrics:8080/sse${NC}"
@@ -359,7 +359,7 @@ show_summary() {
     echo -e "  * Grafana MCP (Admin):     ${CYAN}http://mcp-grafana:8000/sse${NC}"
 
     echo -e "\n${BOLD}Credentials Summary:${NC}"
-    echo -e "  * Basic Auth (Victorias):  User: ${GREEN}${BASIC_AUTH_USER}${NC} | Pass: ${GREEN}${BASIC_AUTH_PASSWORD}${NC}"
+    echo -e "  * Basic Auth (V-Suite & AURA): User: ${GREEN}${BASIC_AUTH_USER}${NC} | Pass: ${GREEN}${BASIC_AUTH_PASSWORD}${NC}"
     echo -e "  * Grafana Admin:           User: ${GREEN}${GRAFANA_ADMIN_USER}${NC} | Pass: ${GREEN}${GRAFANA_ADMIN_PASSWORD}${NC}"
     echo -e "  * LiteLLM Master Key:      ${GREEN}${LITELLM_MASTER_KEY}${NC}"
     echo -e "  * Configuration File:      ${CYAN}${ENV_FILE}${NC}"

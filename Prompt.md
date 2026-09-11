@@ -266,8 +266,8 @@ Ensure `nginx/default.conf` avoids the common pitfalls:
 3. **Favicon & Swagger OpenAPI Routes**:
    - Map `location = /favicon.ico { proxy_pass http://litellm:4000/ui/favicon.ico; }`.
    - Map Swagger UI assets: `/litellm/openapi.json`, `/litellm/oauth2-redirect.html`, `/litellm/swagger/`.
-4. **Basic Auth for Victoria UIs**:
-   - Guard `/vmetrics/`, `/vlogs/`, and `/vtraces/` with `auth_basic "Restricted Access"; auth_basic_user_file /etc/nginx/.htpasswd;`.
+4. **Basic Auth for Victoria UIs & Mezmo AURA**:
+   - Guard `/vmetrics/`, `/vlogs/`, `/vtraces/`, and `/aura/` with `auth_basic "Restricted Access"; auth_basic_user_file /etc/nginx/.htpasswd;`.
 5. **Docker Mount Inode Pitfall**:
    - Note that updating `nginx/default.conf` on the host changes file inodes. Always run `docker compose restart nginx` whenever Nginx configs change.
 
@@ -330,11 +330,12 @@ curl -k -s -X POST https://localhost/litellm/v1/chat/completions \
   -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
   -d '{"model":"mock-model","messages":[{"role":"user","content":"Health check"}]}' | jq .
 
-# 8. Check Mezmo AURA SRE Agent Health
-curl -k -s https://localhost/aura/health | jq .
+# 8. Check Mezmo AURA SRE Agent Health (Basic Auth)
+curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" "https://localhost/aura/health" | jq .
 
-# 9. Test Mezmo AURA Autonomous Investigation
-curl -k -s -X POST https://localhost/aura/v1/chat/completions \
+# 9. Test Mezmo AURA Autonomous Investigation (Basic Auth)
+curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
+  -X POST https://localhost/aura/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"Perform an observability health inspection."}]}' | jq .
 ```

@@ -125,9 +125,14 @@ docker exec -it aura ./aura --api-url http://localhost:8080 \
 
 AURA exposes an OpenAI-compatible web server behind Nginx at **`https://<server>/aura/v1/chat/completions`**.
 
+> 🔒 **Authentication**: The `/aura/` reverse proxy endpoint is protected with **HTTP Basic Authentication** using the exact same credentials (`BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` from `.env`) as `VictoriaLogs`, `VictoriaMetrics`, and `VictoriaTraces`.
+
 #### 1. Using `curl`:
 ```bash
-curl -k -s -X POST https://localhost/aura/v1/chat/completions \
+source .env
+
+curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
+  -X POST https://localhost/aura/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [
@@ -141,14 +146,21 @@ curl -k -s -X POST https://localhost/aura/v1/chat/completions \
 
 #### 2. Using Python (`openai` SDK):
 ```python
+import os
 import httpx
 from openai import OpenAI
 
-# Connect directly to AURA's OpenAI-compatible endpoint
+basic_user = os.environ.get("BASIC_AUTH_USER", "admin")
+basic_pass = os.environ.get("BASIC_AUTH_PASSWORD", "changeme_basic_auth")
+
+# Connect to AURA passing HTTP Basic Auth credentials
 client = OpenAI(
     base_url="https://localhost/aura/v1",
-    api_key="none",  # Auth handled by Nginx & LiteLLM internally
-    http_client=httpx.Client(verify=False)  # Self-signed certificate
+    api_key="none",
+    http_client=httpx.Client(
+        auth=(basic_user, basic_pass),
+        verify=False  # Self-signed certificate
+    )
 )
 
 response = client.chat.completions.create(
@@ -166,7 +178,8 @@ print(response.choices[0].message.content)
 
 #### 3. Health Check Endpoint:
 ```bash
-curl -k -s https://localhost/aura/health | jq .
+source .env
+curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" https://localhost/aura/health | jq .
 ```
 Expected output:
 ```json
@@ -323,9 +336,13 @@ Query executed against VictoriaMetrics:
 #!/usr/bin/env bash
 set -e
 
+# Load credentials from .env if running on host
+[ -f .env ] && source .env
+
 echo "Querying Mezmo AURA AI Agent for post-deployment health check..."
 
-RESPONSE=$(curl -k -s -X POST https://localhost/aura/v1/chat/completions \
+RESPONSE=$(curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
+  -X POST https://localhost/aura/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [
