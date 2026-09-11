@@ -718,6 +718,7 @@ docker compose down -v
 ├── .env.example                           # Configuration environment template
 ├── .gitignore                             # Git ignore rules for secrets
 ├── README.md                              # This documentation
+├── Prompt.md                              # Master AI recreation prompt for this stack
 ├── aura/
 │   └── config.toml                        # Mezmo AURA multi-agent coordinator & worker config
 ├── grafana/
