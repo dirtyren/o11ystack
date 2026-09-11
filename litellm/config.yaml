@@ -25,31 +25,26 @@ mcp_servers:
 
 # Provisioned Free and Open Models
 model_list:
-  # Primary SRE model alias consumed by AURA
+  # Primary SRE model alias consumed by AURA (mapped to active OpenRouter free model)
   - model_name: "aura-sre-model"
     litellm_params:
-      model: "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+      model: "openrouter/nvidia/nemotron-3.5-lightning:free"
       api_key: "os.environ/OPENROUTER_API_KEY"
 
   # Free Tier Cloud Providers
-  - model_name: "openrouter-llama-3.3-70b-free"
+  - model_name: "openrouter-nemotron-free"
     litellm_params:
-      model: "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+      model: "openrouter/nvidia/nemotron-3.5-lightning:free"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+
+  - model_name: "openrouter-gemma-free"
+    litellm_params:
+      model: "openrouter/google/gemma-4-31b-it:free"
       api_key: "os.environ/OPENROUTER_API_KEY"
 
   - model_name: "openrouter-deepseek-r1-free"
     litellm_params:
       model: "openrouter/deepseek/deepseek-r1:free"
-      api_key: "os.environ/OPENROUTER_API_KEY"
-
-  - model_name: "openrouter-gemini-flash-free"
-    litellm_params:
-      model: "openrouter/google/gemini-2.0-flash-exp:free"
-      api_key: "os.environ/OPENROUTER_API_KEY"
-
-  - model_name: "openrouter-qwen-coder-free"
-    litellm_params:
-      model: "openrouter/qwen/qwen-2.5-coder-32b-instruct:free"
       api_key: "os.environ/OPENROUTER_API_KEY"
 
   # Google Gemini Free Tier (15 RPM / 1M TPM free)
