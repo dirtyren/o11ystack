@@ -364,8 +364,9 @@ curl -k -s -X POST https://localhost/litellm/v1/chat/completions \
     "messages": [{"role": "user", "content": "Reply with PONG"}]
   }' | jq .
 
-# 4. Trigger Mezmo AURA SRE investigation using the configured AURA_MODEL
-curl -k -s -X POST https://localhost/aura/v1/chat/completions \
+# 4. Trigger Mezmo AURA SRE investigation using the configured AURA_MODEL (requires Basic Auth)
+curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
+  -X POST https://localhost/aura/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [{"role": "user", "content": "Inspect recent database error rates across logs and metrics."}]
@@ -482,10 +483,10 @@ All services are accessible through Nginx using SSL by default. Non-secure HTTP 
 | `https://<server>/vlogs/select/vmui/` | VictoriaLogs | **HTTP Basic Auth** | Native VictoriaLogs LogSQL web explorer. |
 | `https://<server>/vtraces/select/vmui/` | VictoriaTraces | **HTTP Basic Auth** | Native VictoriaTraces trace explorer. |
 | `https://<server>/litellm/` | LiteLLM | LiteLLM Key / Token | LiteLLM AI Gateway interface and OpenAI-compatible API. |
-| `https://<server>/aura/` | Mezmo AURA | Web API | OpenAI-compatible SRE AI agent endpoints (`/health`, `/v1/chat/completions`). |
+| `https://<server>/aura/` | Mezmo AURA | **HTTP Basic Auth** | OpenAI-compatible SRE AI agent endpoints (`/health`, `/v1/chat/completions`). |
 
 ### Basic Authentication
-VictoriaMetrics, VictoriaLogs, and VictoriaTraces endpoints are guarded by HTTP Basic Authentication. Credentials are saved in `nginx/.htpasswd` and in `.env` as `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD`.
+VictoriaMetrics, VictoriaLogs, VictoriaTraces, and Mezmo AURA endpoints are guarded by HTTP Basic Authentication. Credentials are saved in `nginx/.htpasswd` and in `.env` as `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD`.
 
 ---
 
@@ -672,11 +673,13 @@ curl -k -s -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
 # 7. Check LiteLLM Readiness
 curl -k -s https://localhost/litellm/health/readiness
 
-# 8. Check Mezmo AURA SRE Agent Health
-curl -k -s https://localhost/aura/health | jq .
+# 8. Check Mezmo AURA SRE Agent Health (requires Basic Auth)
+curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
+  https://localhost/aura/health | jq .
 
-# 9. Query Mezmo AURA SRE Agent via OpenAI-compatible endpoint
-curl -k -s -X POST https://localhost/aura/v1/chat/completions \
+# 9. Query Mezmo AURA SRE Agent via OpenAI-compatible endpoint (requires Basic Auth)
+curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
+  -X POST https://localhost/aura/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"Run a complete system observability check across metrics, logs, and traces."}]}' | jq .
 ```
