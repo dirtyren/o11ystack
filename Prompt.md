@@ -71,7 +71,7 @@ Build an all-in-one, self-hosted observability and autonomous AI SRE stack behin
    - Generates `.env` (`chmod 600`), SSL certificates, `.htpasswd`.
    - Creates host storage paths `/var/lib/v*`.
    - Bootstraps Grafana MCP Admin Service Account token.
-   - Starts all 17 containers and displays a colored summary dashboard.
+   - Starts all 18 containers and displays a colored summary dashboard.
 
 ---
 
@@ -81,7 +81,7 @@ Create the repository structure as follows:
 
 ```
 .
-├── docker-compose.yml                     # 17 services orchestrated with networks, healthchecks & volumes
+├── docker-compose.yml                     # 18 services orchestrated with networks, healthchecks & volumes
 ├── deploy.sh                              # Complete interactive deployment and setup script
 ├── .env.example                           # Comprehensive environment template
 ├── .gitignore                             # Ignores .env, certs, .htpasswd, volumes
@@ -178,11 +178,22 @@ In `otel-collector/otel-collector-config.yaml`:
   - Calls `POST /api/serviceaccounts/<id>/tokens` to get an unexpiring token.
   - Writes token into `.env` as `GRAFANA_SERVICE_ACCOUNT_TOKEN`.
 
-### Step 7: LiteLLM AI Gateway & MCP Hub
+### Step 7: LiteLLM AI Gateway, MCP Hub & Redis Cache
 - In `litellm/config.yaml`:
   - `master_key: os.environ/LITELLM_MASTER_KEY`
   - `database_url: os.environ/DATABASE_URL`
   - `store_model_in_db: true`
+  - `store_prompts_in_spend_logs: true`
+  - `maximum_spend_logs_retention_period: "7d"`
+  - `maximum_spend_logs_retention_interval: "1d"`
+  - `maximum_spend_logs_cleanup_cron: "0 4 * * *"`
+  - `maximum_spend_logs_cleanup_batch_size: 1000`
+  - `maximum_spend_logs_cleanup_max_batches: 500`
+  - `maximum_spend_logs_cleanup_run_budget: "5m"`
+  - `maximum_spend_logs_cleanup_batch_timeout: "30s"`
+  - `litellm_settings`:
+    - `cache: true`
+    - `cache_params`: `{ type: redis, host: os.environ/REDIS_HOST, port: 6379, password: os.environ/REDIS_PASSWORD }`
   - Register MCP servers: `victoriametrics`, `victorialogs`, `victoriatraces`, `grafana` (all using transport `sse`).
   - Pre-configure model list:
     - Free models via OpenRouter (`aura-sre-model`, `openrouter-llama-3.3-70b-free`, `openrouter-deepseek-r1-free`, `openrouter-gemini-flash-free`, `openrouter-qwen-coder-free`).
@@ -192,8 +203,10 @@ In `otel-collector/otel-collector-config.yaml`:
     - Commercial options: `gpt-4o`, `gpt-4o-mini`, `claude-3-5-sonnet`.
     - `mock-model` with `mock_response` string for zero-key testing.
 - In `docker-compose.yml`:
+  - Dedicated `redis:7-alpine` container with healthcheck and persistent `redis-data` volume.
+  - Wire `REDIS_HOST: redis`, `REDIS_PORT: "6379"`, and `REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme_redis}` into `litellm`.
   - Pass all API keys through environment: `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `OLLAMA_API_BASE`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `MISTRAL_API_KEY`, `AWS_*`, `AZURE_*`.
-  - Set `PROXY_BASE_URL: "/litellm"`.
+  - Set `PROXY_BASE_URL: "${PROXY_BASE_URL:-${SERVER_PROTOCOL:-https}://${SERVER_HOST:-localhost}/litellm}"`.
 
 ### Step 8: Mezmo AURA Autonomous SRE Agent
 - In `docker-compose.yml`:
@@ -302,7 +315,7 @@ Run these commands to confirm complete functionality:
 ```bash
 source .env
 
-# 1. Check all 17 containers are healthy
+# 1. Check all 18 containers are healthy
 docker compose ps
 
 # 2. Verify Nginx landing page
