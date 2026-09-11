@@ -106,18 +106,15 @@ flowchart TD
     VTraces --> MCP_VT
     Grafana --> MCP_GF
 
-    %% MCP tool execution into AURA & LiteLLM
-    MCP_VM --> AURA
-    MCP_VL --> AURA
-    MCP_VT --> AURA
-    MCP_GF --> AURA
+    %% MCP servers registered in LiteLLM Gateway
     MCP_VM --> LiteLLM
     MCP_VL --> LiteLLM
     MCP_VT --> LiteLLM
     MCP_GF --> LiteLLM
 
-    %% LLM routing
-    LiteLLM -->|"Free & Open Models"| AURA
+    %% LiteLLM Gateway to AURA: LLM reasoning and MCP tools
+    LiteLLM -->|"Free & Open Models (/v1)"| AURA
+    LiteLLM -->|"Secure MCP Gateway (/{server}/mcp & /mcp)"| AURA
 
     %% Ingress access
     Nginx -->|"/vmetrics (Basic Auth)"| VMetrics
@@ -280,7 +277,7 @@ Directories on the host (`/var/lib/vlogs`, `/var/lib/vmetrics`, `/var/lib/vtrace
 
 ## Model Context Protocol (MCP) Integration
 
-All four MCP servers run as standalone containers within the private Docker network and are pre-configured in `litellm/config.yaml`:
+All four MCP servers run as standalone services within the private Docker network and are registered with **LiteLLM**, which serves as an authenticated **MCP Gateway & Hub**:
 
 ```yaml
 mcp_servers:
@@ -304,6 +301,57 @@ mcp_servers:
     transport: "sse"
     description: "Grafana MCP Server with full Admin permissions for dashboards, data sources, alerts, and panel queries"
 ```
+
+### LiteLLM MCP Gateway Endpoints
+LiteLLM exposes authenticated MCP endpoints (using Streamable HTTP transport and Bearer token auth via `LITELLM_MASTER_KEY`):
+
+| Scope | Internal Docker URL | Reverse Proxy URL | Description |
+| :--- | :--- | :--- | :--- |
+| **VictoriaMetrics** | `http://litellm:4000/victoriametrics/mcp` | `https://<server>/litellm/victoriametrics/mcp` | PromQL metrics queries, label explorer, and alert rules. |
+| **VictoriaLogs** | `http://litellm:4000/victorialogs/mcp` | `https://<server>/litellm/victorialogs/mcp` | LogsQL queries, log stream filtering, and histogram stats. |
+| **VictoriaTraces** | `http://litellm:4000/victoriatraces/mcp` | `https://<server>/litellm/victoriatraces/mcp` | Trace retrieval, operation listing, and span graphs. |
+| **Grafana** | `http://litellm:4000/grafana/mcp` | `https://<server>/litellm/grafana/mcp` | Dashboard queries, alert rules, and datasource admin tools. |
+| **Unified Hub** | `http://litellm:4000/mcp` | `https://<server>/litellm/mcp` | Aggregate MCP endpoint combining all 4 observability tools into one stream. |
+
+### Mezmo AURA Integration via LiteLLM MCP Gateway
+Mezmo AURA consumes these tools directly through LiteLLM using Streamable HTTP transport (`http_streamable`) in [`aura/config.toml`](aura/config.toml):
+
+```toml
+[mcp.servers.victoriametrics]
+transport = "http_streamable"
+url = "http://litellm:4000/victoriametrics/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "VictoriaMetrics PromQL metrics server via LiteLLM"
+
+[mcp.servers.victorialogs]
+transport = "http_streamable"
+url = "http://litellm:4000/victorialogs/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "VictoriaLogs LogSQL server via LiteLLM"
+
+[mcp.servers.victoriatraces]
+transport = "http_streamable"
+url = "http://litellm:4000/victoriatraces/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "VictoriaTraces distributed tracing server via LiteLLM"
+
+[mcp.servers.grafana]
+transport = "http_streamable"
+url = "http://litellm:4000/grafana/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "Grafana dashboard, alerts, and datasources server via LiteLLM"
+
+[mcp.servers.litellm-hub]
+transport = "http_streamable"
+url = "http://litellm:4000/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "LiteLLM Unified Observability MCP Hub"
+```
+
+Benefits of this routing:
+- **Unified Security**: All tool calls require valid Bearer token authentication through LiteLLM.
+- **Audit Logging**: LiteLLM logs all MCP tool calls, parameters, and latencies in its PostgreSQL database.
+- **Granular Scoping**: AURA's domain specialist workers (`incident-responder`, `metrics-analyst`, `log-analyst`, `trace-analyst`) continue to be isolated by their `mcp_filter`.
 
 ### Automated Full Permissions for Grafana MCP
 The setup script (`scripts/setup-grafana-mcp.sh`) automatically:

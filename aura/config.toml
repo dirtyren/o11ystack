@@ -88,26 +88,37 @@ and latency bottlenecks across processes.
 """
 
 # ── Model Context Protocol (MCP) Servers ─────────────────────────────
+# Routed through LiteLLM MCP Gateway for unified security, governance, and audit logging
 
 [mcp]
 sanitize_schemas = true
 
 [mcp.servers.victoriametrics]
-transport = "sse"
-url = "http://mcp-victoriametrics:8080/sse"
-description = "VictoriaMetrics PromQL metrics server"
+transport = "http_streamable"
+url = "http://litellm:4000/victoriametrics/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "VictoriaMetrics PromQL metrics server via LiteLLM"
 
 [mcp.servers.victorialogs]
-transport = "sse"
-url = "http://mcp-victorialogs:8081/sse"
-description = "VictoriaLogs LogSQL server"
+transport = "http_streamable"
+url = "http://litellm:4000/victorialogs/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "VictoriaLogs LogSQL server via LiteLLM"
 
 [mcp.servers.victoriatraces]
-transport = "sse"
-url = "http://mcp-victoriatraces:8082/sse"
-description = "VictoriaTraces distributed tracing server"
+transport = "http_streamable"
+url = "http://litellm:4000/victoriatraces/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "VictoriaTraces distributed tracing server via LiteLLM"
 
 [mcp.servers.grafana]
-transport = "sse"
-url = "http://mcp-grafana:8000/sse"
-description = "Grafana dashboard, alerts, and datasources server"
+transport = "http_streamable"
+url = "http://litellm:4000/grafana/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "Grafana dashboard, alerts, and datasources server via LiteLLM"
+
+[mcp.servers.litellm-hub]
+transport = "http_streamable"
+url = "http://litellm:4000/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "LiteLLM Unified Observability MCP Hub"
