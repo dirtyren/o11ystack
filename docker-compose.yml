@@ -130,6 +130,10 @@ services:
       DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD}@postgres:5432/litellm
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       STORE_MODEL_IN_DB: "True"
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OLLAMA_API_BASE: ${OLLAMA_API_BASE:-http://host.docker.internal:11434}
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
     command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
@@ -141,6 +145,47 @@ services:
       timeout: 5s
       retries: 6
       start_period: 20s
+
+  # ==========================================
+  # Mezmo AURA SRE AI Agent
+  # ==========================================
+  aura:
+    image: mezmo/aura:latest
+    container_name: aura
+    restart: unless-stopped
+    command:
+      - ./aura
+      - webserver
+      - --verbose
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "8080"
+      CONFIG_PATH: "/app/config/config.toml"
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      AURA_MODEL: ${AURA_MODEL:-aura-sre-model}
+      AURA_LLM_BASE_URL: "http://litellm:4000/v1"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+    volumes:
+      - ./aura/config.toml:/app/config/config.toml:ro
+    depends_on:
+      litellm:
+        condition: service_healthy
+      mcp-victoriametrics:
+        condition: service_started
+      mcp-victorialogs:
+        condition: service_started
+      mcp-victoriatraces:
+        condition: service_started
+      mcp-grafana:
+        condition: service_started
+    networks:
+      - o11y-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # ==========================================
   # Model Context Protocol (MCP) Servers
@@ -284,6 +329,7 @@ services:
       - victoriatraces
       - grafana
       - litellm
+      - aura
     networks:
       - o11y-net
 

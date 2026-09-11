@@ -4,6 +4,7 @@ general_settings:
   store_model_in_db: true
   use_x_forwarded_for: true
 
+# MCP Servers accessible to LiteLLM and connected agents
 mcp_servers:
   victoriametrics:
     url: "http://mcp-victoriametrics:8080/sse"
@@ -22,8 +23,55 @@ mcp_servers:
     transport: "sse"
     description: "Grafana MCP Server with full Admin permissions for dashboards, data sources, alerts, and panel queries"
 
+# Provisioned Free and Open Models
 model_list:
-  - model_name: "default-model"
+  # Primary SRE model alias consumed by AURA
+  - model_name: "aura-sre-model"
     litellm_params:
-      model: "gpt-4o-mini"
-      api_key: "placeholder-key"
+      model: "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+
+  # Free Tier Cloud Providers
+  - model_name: "openrouter-llama-3.3-70b-free"
+    litellm_params:
+      model: "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+
+  - model_name: "openrouter-deepseek-r1-free"
+    litellm_params:
+      model: "openrouter/deepseek/deepseek-r1:free"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+
+  - model_name: "openrouter-gemini-flash-free"
+    litellm_params:
+      model: "openrouter/google/gemini-2.0-flash-exp:free"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+
+  - model_name: "openrouter-qwen-coder-free"
+    litellm_params:
+      model: "openrouter/qwen/qwen-2.5-coder-32b-instruct:free"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+
+  # Google Gemini Free Tier (15 RPM / 1M TPM free)
+  - model_name: "gemini-2.0-flash"
+    litellm_params:
+      model: "gemini/gemini-2.0-flash"
+      api_key: "os.environ/GEMINI_API_KEY"
+
+  # Groq Free Tier (Ultra-fast inference)
+  - model_name: "groq-llama-3.3-70b"
+    litellm_params:
+      model: "groq/llama-3.3-70b-versatile"
+      api_key: "os.environ/GROQ_API_KEY"
+
+  # Local Free Ollama (Offline, 100% free CPU/GPU)
+  - model_name: "ollama-llama3"
+    litellm_params:
+      model: "ollama/llama3.2"
+      api_base: "os.environ/OLLAMA_API_BASE"
+
+  # Mock model for zero-API-key testing and offline validation
+  - model_name: "mock-model"
+    litellm_params:
+      model: "gpt-3.5-turbo"
+      mock_response: "AURA SRE Agent analysis: Metrics, logs, and traces indicate the system is operational."

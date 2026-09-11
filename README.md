@@ -6,9 +6,10 @@
 [![VictoriaTraces](https://img.shields.io/badge/VictoriaTraces-v0.10%2B-blueviolet.svg)](https://docs.victoriametrics.com/victoriatraces/)
 [![Grafana](https://img.shields.io/badge/Grafana-Latest%20Stable-F46800.svg)](https://grafana.com/)
 [![LiteLLM](https://img.shields.io/badge/LiteLLM-Proxy-black.svg)](https://litellm.ai/)
+[![Mezmo AURA](https://img.shields.io/badge/Mezmo-AURA%20SRE%20Agent-5B5FEF.svg)](https://github.com/mezmo/aura)
 [![MCP](https://img.shields.io/badge/Protocol-Model%20Context%20Protocol%20(MCP)-purple.svg)](https://modelcontextprotocol.io/)
 
-A complete, production-grade observability and AI orchestration stack running on Docker Compose. It unifies **metrics**, **logs**, **traces (eBPF)**, **interactive dashboards**, **LLM gateway**, and **Model Context Protocol (MCP)** servers behind a hardened, SSL-enabled Nginx reverse proxy.
+A complete, production-grade observability and AI orchestration stack running on Docker Compose. It unifies **metrics**, **logs**, **traces (eBPF)**, **interactive dashboards**, **LLM gateway with provisioned free models**, **Model Context Protocol (MCP)** servers, and the autonomous **Mezmo AURA SRE AI Agent** behind a hardened, SSL-enabled Nginx reverse proxy.
 
 ---
 
@@ -16,6 +17,8 @@ A complete, production-grade observability and AI orchestration stack running on
 
 - [Architecture & Data Flow](#architecture--data-flow)
 - [Stack Components](#stack-components)
+- [Mezmo AURA SRE AI Agent](#mezmo-aura-sre-ai-agent)
+- [Free & Open LLM Models](#free--open-llm-models)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Security & Access Control](#security--access-control)
@@ -56,9 +59,10 @@ flowchart TD
         Postgres["PostgreSQL 16 (LiteLLM Backend DB)"]
     end
 
-    subgraph UserAndAI["Visualization & LLM Orchestration"]
+    subgraph UserAndAI["Visualization & AI Orchestration"]
         Grafana["Grafana Web UI (Latest Stable :3000)"]
         LiteLLM["LiteLLM Gateway (:4000)"]
+        AURA["Mezmo AURA SRE AI Agent (:8080)"]
     end
 
     subgraph MCPLayer["Model Context Protocol (MCP) Servers"]
@@ -81,6 +85,7 @@ flowchart TD
     NodeExp -->|"Metrics Scrape"| OTelCol
     ProcExp -->|"Metrics Scrape"| OTelCol
     Beyla -->|"OTLP eBPF Spans"| OTelCol
+    AURA -->|"OTLP Agent Traces"| OTelCol
 
     OTelCol -->|"Prometheus Remote Write"| VMetrics
     OTelCol -->|"OTLP HTTP Logs"| VLogs
@@ -101,11 +106,18 @@ flowchart TD
     VTraces --> MCP_VT
     Grafana --> MCP_GF
 
-    %% LiteLLM consuming MCP
+    %% MCP tool execution into AURA & LiteLLM
+    MCP_VM --> AURA
+    MCP_VL --> AURA
+    MCP_VT --> AURA
+    MCP_GF --> AURA
     MCP_VM --> LiteLLM
     MCP_VL --> LiteLLM
     MCP_VT --> LiteLLM
     MCP_GF --> LiteLLM
+
+    %% LLM routing
+    LiteLLM -->|"Free & Open Models"| AURA
 
     %% Ingress access
     Nginx -->|"/vmetrics (Basic Auth)"| VMetrics
@@ -113,6 +125,7 @@ flowchart TD
     Nginx -->|"/vtraces (Basic Auth)"| VTraces
     Nginx -->|"/grafana"| Grafana
     Nginx -->|"/litellm"| LiteLLM
+    Nginx -->|"/aura"| AURA
 ```
 
 ---
@@ -126,8 +139,9 @@ flowchart TD
 | **VictoriaTraces** | `victoriametrics/victoria-traces:latest` | `10428/tcp` (HTTP), `4317/tcp` (gRPC) | `/var/lib/vtraces` (1 Year) | High-throughput distributed tracing DB supporting OTLP, Tempo, and Jaeger APIs. |
 | **Grafana** | `grafana/grafana:latest` | `3000/tcp` | `grafana-data` volume + MySQL 8.0 | Latest stable Grafana with pre-provisioned datasources for Victorias. |
 | **MySQL Backend** | `mysql:8.0` | `3306/tcp` | `mysql-data` volume | Dedicated relational database backend for Grafana state, users, and dashboards. |
-| **LiteLLM Proxy** | `ghcr.io/berriai/litellm:main-latest` | `4000/tcp` | PostgreSQL 16 backend | Multi-provider LLM gateway configured with all 4 MCP servers. |
+| **LiteLLM Proxy** | `ghcr.io/berriai/litellm:main-latest` | `4000/tcp` | PostgreSQL 16 backend | Multi-provider LLM gateway configured with all 4 MCP servers and free model list. |
 | **PostgreSQL** | `postgres:16-alpine` | `5432/tcp` | `postgres-data` volume | Relational database backend for LiteLLM key management and call tracking. |
+| **Mezmo AURA** | `mezmo/aura:latest` | `8080/tcp` | `/tmp/aura` memory | Autonomous SRE agent with multi-worker orchestration connected to all MCP servers. |
 | **MCP VictoriaMetrics** | `ghcr.io/victoriametrics/mcp-victoriametrics` | `8080/tcp` (SSE) | Stateless | Exposes PromQL queries, metrics metadata, cardinalities, and docs as MCP tools. |
 | **MCP VictoriaLogs** | `ghcr.io/victoriametrics/mcp-victorialogs` | `8081/tcp` (SSE) | Stateless | Exposes log stream queries, LogSQL filter expressions, and statistics to LLMs. |
 | **MCP VictoriaTraces** | `ghcr.io/victoriametrics-community/mcp-victoriatraces` | `8082/tcp` (SSE) | Stateless | Exposes operations, service dependency graphs, and span retrieval to LLMs. |
@@ -137,6 +151,64 @@ flowchart TD
 | **OTel Collector** | `otel/opentelemetry-collector-contrib:latest` | `4317/tcp`, `4318/tcp` | Host `/var/log` | Pipelines server metrics, logs, and distributed traces into Victoria databases. |
 | **Grafana Beyla** | `grafana/beyla:latest` | Host eBPF Probes | Linux Kernel | Zero-code, automatic eBPF tracing of all processes (HTTP/gRPC/SQL). |
 | **Nginx** | `nginx:alpine` | `80/tcp`, `443/tcp` | SSL Certs + `.htpasswd` | Reverse proxy with default SSL, prefix routing, and Basic Auth protection. |
+
+---
+
+## Mezmo AURA SRE AI Agent
+
+The stack integrates **[Mezmo AURA](https://github.com/mezmo/aura)**, an open-source, multi-agent SRE agent designed for incident investigation, autonomous root-cause analysis, and observability querying.
+
+### Multi-Agent Orchestration Architecture
+
+AURA operates with an **Orchestrator Coordinator** that analyzes user prompts and delegates investigation tasks to 4 domain-specialist workers:
+
+1. **`incident-responder`**:
+   - Filter: `grafana` MCP
+   - Inspects Grafana active alerts, incident status, provisioned datasources, and dashboard health.
+2. **`metrics-analyst`**:
+   - Filter: `victoriametrics` MCP
+   - Formulates and executes PromQL queries, computes CPU/memory trends, and pinpoints telemetry anomalies.
+3. **`log-analyst`**:
+   - Filter: `victorialogs` MCP
+   - Queries server log streams using LogSQL, analyzes error patterns, and correlates log events across containers.
+4. **`trace-analyst`**:
+   - Filter: `victoriatraces` MCP
+   - Inspects distributed trace spans generated by Beyla eBPF, constructs service dependency graphs, and locates latency bottlenecks.
+
+### Telemetry & Tracing
+AURA sends its internal execution spans (subagent turns, tool invocations, and reasoning steps) directly to the OpenTelemetry Collector via `OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4317"`. These traces are stored in **VictoriaTraces**, allowing SREs to inspect the AI's step-by-step reasoning within Grafana.
+
+---
+
+## Free & Open LLM Models
+
+The stack comes pre-provisioned in `litellm/config.yaml` with free and zero-cost model options so you can start investigating without paid API quotas:
+
+| Model ID | Provider | Cost | Description | Required Environment Variable |
+| :--- | :--- | :--- | :--- | :--- |
+| `aura-sre-model` | OpenRouter | **Free** | Default SRE model alias mapped to Llama 3.3 70B Free | `OPENROUTER_API_KEY` |
+| `openrouter-llama-3.3-70b-free` | OpenRouter | **Free** | `meta-llama/llama-3.3-70b-instruct:free` (128k context) | `OPENROUTER_API_KEY` |
+| `openrouter-deepseek-r1-free` | OpenRouter | **Free** | `deepseek/deepseek-r1:free` (DeepSeek reasoning model) | `OPENROUTER_API_KEY` |
+| `openrouter-gemini-flash-free` | OpenRouter | **Free** | `google/gemini-2.0-flash-exp:free` (Fast multimodal reasoning) | `OPENROUTER_API_KEY` |
+| `openrouter-qwen-coder-free` | OpenRouter | **Free** | `qwen/qwen-2.5-coder-32b-instruct:free` (Code analysis) | `OPENROUTER_API_KEY` |
+| `gemini-2.0-flash` | Google AI | **Free Tier** | Official Gemini 2.0 Flash (15 RPM / 1M TPM free tier) | `GEMINI_API_KEY` |
+| `groq-llama-3.3-70b` | GroqCloud | **Free Tier** | Llama 3.3 70B Versatile on Groq LPUs (ultra-fast tokens/sec) | `GROQ_API_KEY` |
+| `ollama-llama3` | Local Host | **Free (100%)** | Fully offline inference via local Ollama instance | `OLLAMA_API_BASE` |
+| `mock-model` | Internal Mock | **Free (Zero Key)** | Mock responses for offline integration testing | None |
+
+### Setting Up Your Free LLM Key
+1. Get a free API key:
+   - **OpenRouter** (Recommended): [openrouter.ai](https://openrouter.ai/) (Free tier models require $0 balance).
+   - **Google AI Studio**: [aistudio.google.com](https://aistudio.google.com/) (Generous 15 RPM free tier).
+   - **GroqCloud**: [console.groq.com](https://console.groq.com/) (Free inference tier).
+2. Set the key in `.env`:
+   ```bash
+   OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxx
+   ```
+3. Restart LiteLLM and AURA:
+   ```bash
+   docker compose up -d litellm aura
+   ```
 
 ---
 
@@ -187,6 +259,7 @@ All services are accessible through Nginx using SSL by default. Non-secure HTTP 
 | `https://<server>/vlogs/select/vmui/` | VictoriaLogs | **HTTP Basic Auth** | Native VictoriaLogs LogSQL web explorer. |
 | `https://<server>/vtraces/select/vmui/` | VictoriaTraces | **HTTP Basic Auth** | Native VictoriaTraces trace explorer. |
 | `https://<server>/litellm/` | LiteLLM | LiteLLM Key / Token | LiteLLM AI Gateway interface and OpenAI-compatible API. |
+| `https://<server>/aura/` | Mezmo AURA | Web API | OpenAI-compatible SRE AI agent endpoints (`/health`, `/v1/chat/completions`). |
 
 ### Basic Authentication
 VictoriaMetrics, VictoriaLogs, and VictoriaTraces endpoints are guarded by HTTP Basic Authentication. Credentials are saved in `nginx/.htpasswd` and in `.env` as `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD`.
@@ -286,6 +359,14 @@ curl -k -s -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
 
 # 6. Check LiteLLM Readiness
 curl -k -s https://localhost/litellm/health/readiness
+
+# 7. Check Mezmo AURA SRE Agent Health
+curl -k -s https://localhost/aura/health | jq .
+
+# 8. Query Mezmo AURA SRE Agent via OpenAI-compatible endpoint
+curl -k -s -X POST https://localhost/aura/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Run a complete system observability check across metrics, logs, and traces."}]}' | jq .
 ```
 
 ---
@@ -303,6 +384,7 @@ docker compose logs -f
 docker compose logs -f otel-collector
 docker compose logs -f beyla
 docker compose logs -f litellm
+docker compose logs -f aura
 docker compose logs -f mcp-grafana
 
 # Restart a specific service
@@ -321,17 +403,19 @@ docker compose down -v
 
 ```
 .
-├── docker-compose.yml                     # Main service definitions
+├── docker-compose.yml                     # Main service definitions (17 services)
 ├── deploy.sh                              # Interactive deployment script
 ├── .env.example                           # Configuration environment template
 ├── .gitignore                             # Git ignore rules for secrets
 ├── README.md                              # This documentation
+├── aura/
+│   └── config.toml                        # Mezmo AURA multi-agent coordinator & worker config
 ├── grafana/
 │   └── provisioning/
 │       └── datasources/
 │           └── datasources.yaml           # Automated datasource definitions
 ├── litellm/
-│   └── config.yaml                        # LiteLLM proxy & MCP servers configuration
+│   └── config.yaml                        # LiteLLM proxy, free models & MCP servers configuration
 ├── nginx/
 │   ├── nginx.conf                         # Primary Nginx configuration
 │   ├── default.conf                       # HTTPS server & reverse proxy routes
@@ -349,3 +433,4 @@ docker compose down -v
 ## License
 
 This project is licensed under the MIT License.
+

@@ -1,0 +1,113 @@
+# Aura SRE Agent Configuration for o11ystack
+# Connects to VictoriaMetrics, VictoriaLogs, VictoriaTraces, and Grafana via MCP,
+# powered by LiteLLM Proxy with provisioned free and open models.
+
+memory_dir = "/tmp/aura"
+
+[agent]
+name = "Aura SRE Orchestrator"
+system_prompt = """
+You are an SRE Orchestrator that decomposes operational and observability tasks \
+into specialized sub-tasks and delegates them to specialized workers.
+
+AVAILABLE WORKERS
+- incident-responder: Incident triage — inspect Grafana alerts, dashboards, and operational status.
+- metrics-analyst: Monitoring queries — execute PromQL against VictoriaMetrics, analyze trends, detect anomalies.
+- log-analyst: Log investigation — search VictoriaLogs with LogSQL, find error patterns, correlate events.
+- trace-analyst: Trace investigation — analyze distributed traces in VictoriaTraces, find bottleneck spans.
+
+ROUTING GUIDANCE
+- Incident lookup, alert validation, dashboard state → incident-responder
+- Metric queries, TSDB trends, CPU/RAM/process anomalies → metrics-analyst
+- Server logs, stack traces, error frequency → log-analyst
+- Distributed tracing, latency bottlenecks, service call graph → trace-analyst
+- Cross-domain investigations → dispatch to multiple workers in parallel
+
+RESPONSE STRUCTURE
+Lead with a one-line status summary, then list findings tagged by severity:
+- 🔴 **Critical**: service broken or immediate action required
+- 🟡 **Warning**: performance degraded or potential risk
+- 🟢 **Normal**: healthy or verified operational
+Provide clear, actionable root cause analysis and recommendations.
+"""
+turn_depth = 15
+
+[agent.llm]
+provider = "openai"
+base_url = "{{ env.AURA_LLM_BASE_URL | default: 'http://litellm:4000/v1' }}"
+api_key = "{{ env.LITELLM_MASTER_KEY }}"
+model = "{{ env.AURA_MODEL | default: 'aura-sre-model' }}"
+context_window = 128000
+
+[agent.scratchpad]
+enabled = true
+context_safety_margin = 0.20
+max_extraction_tokens = 10000
+turn_depth_bonus = 6
+
+[orchestration]
+enabled = true
+max_planning_cycles = 2
+
+# ── Specialized Workers ──────────────────────────────────────────────
+
+[orchestration.worker.incident-responder]
+description = "Incident triage: inspect Grafana alerts, status, and dashboards"
+turn_depth = 10
+mcp_filter = ["grafana"]
+preamble = """
+You are an Incident Responder. Use Grafana tools to inspect alerts, active incidents, \
+datasources, and dashboards. Report findings clearly with timestamps and severity.
+"""
+
+[orchestration.worker.metrics-analyst]
+description = "Monitoring queries: PromQL, VictoriaMetrics TSDB, performance trends"
+turn_depth = 10
+mcp_filter = ["victoriametrics"]
+preamble = """
+You are a Metrics Analyst. Use VictoriaMetrics tools to run PromQL queries, \
+analyze CPU/memory/network metrics, and detect anomalies. Always use tools to get live data.
+"""
+
+[orchestration.worker.log-analyst]
+description = "Log investigation: VictoriaLogs queries, LogSQL patterns, error correlation"
+turn_depth = 10
+mcp_filter = ["victorialogs"]
+preamble = """
+You are a Log Analyst. Use VictoriaLogs tools to query log streams, search error logs, \
+and correlate logs across services. Always verify with actual log entries.
+"""
+
+[orchestration.worker.trace-analyst]
+description = "Distributed trace investigation: VictoriaTraces queries, span analysis, latency bottlenecks"
+turn_depth = 10
+mcp_filter = ["victoriatraces"]
+preamble = """
+You are a Trace Analyst. Use VictoriaTraces tools to inspect trace spans, service call graphs, \
+and latency bottlenecks across processes.
+"""
+
+# ── Model Context Protocol (MCP) Servers ─────────────────────────────
+
+[mcp]
+sanitize_schemas = true
+
+[mcp.servers.victoriametrics]
+transport = "sse"
+url = "http://mcp-victoriametrics:8080/sse"
+description = "VictoriaMetrics PromQL metrics server"
+
+[mcp.servers.victorialogs]
+transport = "sse"
+url = "http://mcp-victorialogs:8081/sse"
+description = "VictoriaLogs LogSQL server"
+
+[mcp.servers.victoriatraces]
+transport = "sse"
+url = "http://mcp-victoriatraces:8082/sse"
+description = "VictoriaTraces distributed tracing server"
+
+[mcp.servers.grafana]
+transport = "sse"
+url = "http://mcp-grafana:8000/sse"
+description = "Grafana dashboard, alerts, and datasources server"

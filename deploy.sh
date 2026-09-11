@@ -43,7 +43,7 @@ print_banner() {
  \___/|_|_|\__, |____/ \__\__,_|\___|_|\_\
            |___/                          
  VictoriaLogs | VictoriaMetrics | VictoriaTraces
- Grafana | LiteLLM | MCP Servers | Nginx Proxy
+ Grafana | LiteLLM | Mezmo AURA | Nginx Proxy
 EOF
     echo -e "${NC}"
 }
@@ -216,6 +216,15 @@ POSTGRES_PASSWORD=${p_pass}
 # LiteLLM Configuration
 LITELLM_MASTER_KEY=${l_key}
 
+# Mezmo AURA SRE AI Agent
+AURA_MODEL=aura-sre-model
+
+# LLM Providers (Optional - supply one or more for live LLM reasoning)
+OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+GEMINI_API_KEY=${GEMINI_API_KEY:-}
+GROQ_API_KEY=${GROQ_API_KEY:-}
+OLLAMA_API_BASE=${OLLAMA_API_BASE:-http://host.docker.internal:11434}
+
 # Grafana Service Account Token (Generated automatically by deploy.sh)
 GRAFANA_SERVICE_ACCOUNT_TOKEN=
 EOF
@@ -313,9 +322,9 @@ deploy_stack() {
     # shellcheck disable=SC1090
     source "$ENV_FILE"
 
-    # Start remaining services: MCP servers, LiteLLM, and Nginx
-    log_info "Starting MCP servers, LiteLLM proxy, and Nginx reverse proxy..."
-    docker compose up -d mcp-victoriametrics mcp-victorialogs mcp-victoriatraces mcp-grafana litellm nginx
+    # Start remaining services: MCP servers, LiteLLM, Mezmo AURA, and Nginx
+    log_info "Starting MCP servers, LiteLLM proxy, Mezmo AURA agent, and Nginx reverse proxy..."
+    docker compose up -d mcp-victoriametrics mcp-victorialogs mcp-victoriatraces mcp-grafana litellm aura nginx
 
     log_success "All stack containers are up!"
 }
@@ -341,6 +350,7 @@ show_summary() {
     echo -e "  * VictoriaLogs UI:         ${CYAN}${base_url}/vlogs/select/vmui/${NC}   ${YELLOW}(Basic Auth)${NC}"
     echo -e "  * VictoriaTraces UI:       ${CYAN}${base_url}/vtraces/select/vmui/${NC} ${YELLOW}(Basic Auth)${NC}"
     echo -e "  * LiteLLM Proxy API / UI:  ${CYAN}${base_url}/litellm/${NC}"
+    echo -e "  * Mezmo AURA SRE Agent:    ${CYAN}${base_url}/aura/${NC}"
 
     echo -e "\n${BOLD}Model Context Protocol (MCP) Endpoints (configured in LiteLLM):${NC}"
     echo -e "  * VictoriaMetrics MCP:     ${CYAN}http://mcp-victoriametrics:8080/sse${NC}"
