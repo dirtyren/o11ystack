@@ -375,7 +375,7 @@ AURA delegates all LLM completions to LiteLLM. You can switch the model powering
 AURA_MODEL=aura-sre-model
 
 # 2. Google Gemini Free Tier (15 RPM / 1M TPM free)
-# AURA_MODEL=gemini-2.0-flash
+# AURA_MODEL=gemini-3.8-flash
 
 # 3. GroqCloud Free Tier (Ultra-fast tokens/sec)
 # AURA_MODEL=groq-llama-3.3-70b

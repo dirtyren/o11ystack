@@ -221,7 +221,7 @@ The stack comes pre-configured with free, local, commercial, and mock models:
 | `openrouter-deepseek-r1-free` | OpenRouter | **Free** | 64k | `deepseek/deepseek-r1:free` (Reasoning model) | `OPENROUTER_API_KEY` |
 | `openrouter-gemini-flash-free` | OpenRouter | **Free** | 1M | `google/gemini-2.0-flash-exp:free` (Multimodal) | `OPENROUTER_API_KEY` |
 | `openrouter-qwen-coder-free` | OpenRouter | **Free** | 32k | `qwen/qwen-2.5-coder-32b-instruct:free` | `OPENROUTER_API_KEY` |
-| `gemini-2.0-flash` | Google AI | **Free Tier** | 1M | Google Gemini 2.0 Flash (15 RPM / 1M TPM free tier) | `GEMINI_API_KEY` |
+| `gemini-3.8-flash` | Google AI | **Free Tier** | 1M | Google Gemini 3.8 Flash (15 RPM / 1M TPM free tier) | `GEMINI_API_KEY` |
 | `groq-llama-3.3-70b` | GroqCloud | **Free Tier** | 128k | Llama 3.3 70B Versatile on ultra-fast Groq LPUs | `GROQ_API_KEY` |
 | `ollama-llama3` | Local Host | **Free (100%)** | Local | Offline local inference via Ollama (Zero API keys) | `OLLAMA_API_BASE` |
 | `gpt-4o` | OpenAI | Paid / Tier | 128k | OpenAI flagship GPT-4o model | `OPENAI_API_KEY` |
@@ -250,7 +250,7 @@ The stack comes pre-configured with free, local, commercial, and mock models:
      ```bash
      GEMINI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
      ```
-   - This unlocks `gemini-2.0-flash`.
+   - This unlocks `gemini-3.8-flash`.
 
 3. **GroqCloud (Ultra-Fast Inference Free Tier)**:
    - Obtain a key from [console.groq.com](https://console.groq.com/).
@@ -322,7 +322,7 @@ Mezmo AURA reads its LLM model from the `AURA_MODEL` environment variable. To ch
    AURA_MODEL=aura-sre-model
 
    # Or switch to Google Gemini Flash
-   AURA_MODEL=gemini-2.0-flash
+   AURA_MODEL=gemini-3.8-flash
 
    # Or switch to Groq ultra-fast Llama 3.3
    AURA_MODEL=groq-llama-3.3-70b
@@ -361,12 +361,12 @@ curl -k -s -X POST https://localhost/litellm/v1/chat/completions \
     "messages": [{"role": "user", "content": "System status check"}]
   }' | jq .
 
-# 3. Test chat completion on a live cloud model (e.g. gemini-2.0-flash)
+# 3. Test chat completion on a live cloud model (e.g. gemini-3.8-flash)
 curl -k -s -X POST https://localhost/litellm/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
   -d '{
-    "model": "gemini-2.0-flash",
+    "model": "gemini-3.8-flash",
     "messages": [{"role": "user", "content": "Reply with PONG"}]
   }' | jq .
 
@@ -463,7 +463,7 @@ The stack uses a single `.env` file (copied from `.env.example` or initialized i
 | `PROXY_BASE_URL` | `https://localhost/litellm` | LiteLLM Gateway | Public base URL for LiteLLM UI Playground and client SDKs (must include `http://` or `https://`). |
 | `AURA_MODEL` | `aura-sre-model` | Mezmo AURA AI | Active LLM model alias consumed by Mezmo AURA SRE Agent from LiteLLM. |
 | `OPENROUTER_API_KEY` | *(empty)* | Free Tier LLM | OpenRouter API key unlocking free Llama 3.3 70B, DeepSeek R1, Qwen, and Gemini Flash. |
-| `GEMINI_API_KEY` | *(empty)* | Free Tier LLM | Google AI Studio API key for `gemini-2.0-flash` (15 RPM / 1M TPM free tier). |
+| `GEMINI_API_KEY` | *(empty)* | Free Tier LLM | Google AI Studio API key for `gemini-3.8-flash` (15 RPM / 1M TPM free tier). |
 | `GROQ_API_KEY` | *(empty)* | Free Tier LLM | GroqCloud API key for `groq-llama-3.3-70b` (ultra-fast inference free tier). |
 | `OLLAMA_API_BASE` | `http://host.docker.internal:11434` | Local Offline LLM | Base URL to a local Ollama instance running on the host machine. |
 | `OPENAI_API_KEY` | *(empty)* | Commercial LLM (Optional) | OpenAI API key for `gpt-4o` and `gpt-4o-mini`. |
