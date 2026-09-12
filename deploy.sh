@@ -167,6 +167,10 @@ configure_environment() {
     local p_pass
     p_pass=$(prompt_secret "Enter PostgreSQL LiteLLM Password" "$(gen_secret 24)")
 
+    echo -e "\n${YELLOW}--- Redis In-Memory Cache (for LiteLLM) ---${NC}"
+    local r_pass
+    r_pass=$(prompt_secret "Enter Redis Password" "$(gen_secret 24)")
+
     echo -e "\n${YELLOW}--- LiteLLM Proxy ---${NC}"
     local l_key
     l_key=$(prompt_secret "Enter LiteLLM Master Key" "sk-$(gen_secret 32)")
@@ -213,8 +217,12 @@ GRAFANA_DB_PASSWORD=${g_db_pass}
 POSTGRES_USER=${p_user}
 POSTGRES_PASSWORD=${p_pass}
 
+# Redis In-Memory Cache for LiteLLM
+REDIS_PASSWORD=${r_pass}
+
 # LiteLLM Configuration
 LITELLM_MASTER_KEY=${l_key}
+PROXY_BASE_URL=https://${s_host}/litellm
 
 # Mezmo AURA SRE AI Agent
 AURA_MODEL=aura-sre-model
@@ -302,7 +310,7 @@ deploy_stack() {
     cd "${STACK_DIR}"
 
     # Start core databases and Victorias first
-    docker compose up -d mysql postgres victoriametrics victorialogs victoriatraces node-exporter process-exporter otel-collector beyla
+    docker compose up -d mysql postgres redis victoriametrics victorialogs victoriatraces node-exporter process-exporter otel-collector beyla
 
     log_info "Starting Grafana and waiting for database migrations..."
     docker compose up -d grafana

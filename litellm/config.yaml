@@ -3,6 +3,28 @@ general_settings:
   database_url: os.environ/DATABASE_URL
   store_model_in_db: true
   use_x_forwarded_for: true
+  store_prompts_in_spend_logs: true
+  maximum_spend_logs_retention_period: "7d"  # Keep logs for 7 days
+
+  # Optional: set how frequently cleanup should run - default is daily
+  maximum_spend_logs_retention_interval: "1d"  # Run cleanup daily
+
+  # Optional: set exact time for cleanup (Cron syntax)
+  maximum_spend_logs_cleanup_cron: "0 4 * * *" # Run at 04:00 AM daily
+
+  # Optional: bound how much work a single run may do
+  maximum_spend_logs_cleanup_batch_size: 1000   # Rows per DELETE statement
+  maximum_spend_logs_cleanup_max_batches: 500   # DELETE statements per table per run
+  maximum_spend_logs_cleanup_run_budget: "5m"   # Wall clock for the whole run
+  maximum_spend_logs_cleanup_batch_timeout: "30s" # statement_timeout and lock_timeout per batch
+
+litellm_settings:
+  cache: true
+  cache_params:
+    type: redis
+    host: os.environ/REDIS_HOST
+    port: 6379
+    password: os.environ/REDIS_PASSWORD
 
 # MCP Servers accessible to LiteLLM and connected agents
 mcp_servers:

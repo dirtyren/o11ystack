@@ -119,6 +119,27 @@ services:
       retries: 5
       start_period: 5s
 
+  # ==========================================
+  # Redis In-Memory Cache for LiteLLM
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-changeme_redis}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme_redis}
+    volumes:
+      - redis-data:/data
+    networks:
+      - o11y-net
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD:-changeme_redis}\" redis-cli ping | grep PONG || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
     container_name: litellm
@@ -126,11 +147,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD}@postgres:5432/litellm
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       STORE_MODEL_IN_DB: "True"
       PROXY_BASE_URL: ${PROXY_BASE_URL:-${SERVER_PROTOCOL:-https}://${SERVER_HOST:-localhost}/litellm}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme_redis}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
@@ -348,6 +374,7 @@ volumes:
   mysql-data:
   grafana-data:
   postgres-data:
+  redis-data:
 
 networks:
   o11y-net:

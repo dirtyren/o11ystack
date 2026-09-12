@@ -56,9 +56,10 @@ flowchart TD
         VTraces["VictoriaTraces Engine (/var/lib/vtraces :10428)"]
     end
 
-    subgraph Databases["Dedicated Backend Databases"]
+    subgraph Databases["Dedicated Backend Databases & Cache"]
         MySQL["MySQL 8.0 (Grafana Backend DB)"]
         Postgres["PostgreSQL 16 (LiteLLM Backend DB)"]
+        Redis["Redis 7 (LiteLLM In-Memory Cache)"]
     end
 
     subgraph UserAndAI["Visualization & AI Orchestration"]
@@ -93,9 +94,10 @@ flowchart TD
     OTelCol -->|"OTLP HTTP Logs"| VLogs
     OTelCol -->|"OTLP gRPC Spans"| VTraces
 
-    %% Database backing
+    %% Database backing & caching
     MySQL --> Grafana
     Postgres --> LiteLLM
+    Redis -->|"LLM Response Cache & Coordination"| LiteLLM
 
     %% Datasources into Grafana
     VMetrics -->|"Prometheus Datasource"| Grafana
@@ -140,6 +142,7 @@ flowchart TD
 | **MySQL Backend** | `mysql:8.0` | `3306/tcp` | `mysql-data` volume | Dedicated relational database backend for Grafana state, users, and dashboards. |
 | **LiteLLM Proxy** | `ghcr.io/berriai/litellm:main-latest` | `4000/tcp` | PostgreSQL 16 backend | Multi-provider LLM gateway configured with all 4 MCP servers and free model list. |
 | **PostgreSQL** | `postgres:16-alpine` | `5432/tcp` | `postgres-data` volume | Relational database backend for LiteLLM key management and call tracking. |
+| **Redis Cache** | `redis:7-alpine` | `6379/tcp` | `redis-data` volume | In-memory cache for LiteLLM response caching, spend counters, and cross-replica coordination. |
 | **Mezmo AURA** | `mezmo/aura:latest` | `8080/tcp` | `/tmp/aura` memory | Autonomous SRE agent with multi-worker orchestration connected to all MCP servers. |
 | **MCP VictoriaMetrics** | `ghcr.io/victoriametrics/mcp-victoriametrics` | `8080/tcp` (SSE) | Stateless | Exposes PromQL queries, metrics metadata, cardinalities, and docs as MCP tools. |
 | **MCP VictoriaLogs** | `ghcr.io/victoriametrics/mcp-victorialogs` | `8081/tcp` (SSE) | Stateless | Exposes log stream queries, LogSQL filter expressions, and statistics to LLMs. |
@@ -449,6 +452,7 @@ The stack uses a single `.env` file (copied from `.env.example` or initialized i
 | `GRAFANA_DB_PASSWORD` | `changeme_grafana_db` | Backend Databases | Dedicated user password for Grafana's `grafana` database. |
 | `POSTGRES_USER` | `litellm` | Backend Databases | Dedicated PostgreSQL user for LiteLLM. |
 | `POSTGRES_PASSWORD` | `changeme_postgres_litellm` | Backend Databases | PostgreSQL password for LiteLLM key storage and audit logging. |
+| `REDIS_PASSWORD` | `changeme_redis` | Backend Databases & Cache | Password for Redis 7 in-memory cache and cross-pod coordination. |
 | `LITELLM_MASTER_KEY` | `sk-litellm-master-key-...` | LiteLLM Gateway | Bearer token for LiteLLM Admin UI login (`admin`) and secure MCP / REST APIs. |
 | `PROXY_BASE_URL` | `https://localhost/litellm` | LiteLLM Gateway | Public base URL for LiteLLM UI Playground and client SDKs (must include `http://` or `https://`). |
 | `AURA_MODEL` | `aura-sre-model` | Mezmo AURA AI | Active LLM model alias consumed by Mezmo AURA SRE Agent from LiteLLM. |
@@ -493,6 +497,7 @@ VictoriaMetrics, VictoriaLogs, VictoriaTraces, and Mezmo AURA endpoints are guar
 
 ## Storage & Retention
 
+### Victoria Observability Retention (1 Year)
 The stack enforces 1-year retention on all three Victoria storage backends:
 
 - **VictoriaLogs**: `-storageDataPath=/var/lib/vlogs -retentionPeriod=1y`
@@ -500,6 +505,18 @@ The stack enforces 1-year retention on all three Victoria storage backends:
 - **VictoriaTraces**: `-storageDataPath=/var/lib/vtraces -retentionPeriod=1y`
 
 Directories on the host (`/var/lib/vlogs`, `/var/lib/vmetrics`, `/var/lib/vtraces`) are automatically created and initialized with appropriate permissions by `deploy.sh`.
+
+### LiteLLM Spend Logs Retention & Prompt Storage (7 Days)
+LiteLLM is configured with automated spend log auditing and bounded cleanup:
+- **Prompt Storage**: `store_prompts_in_spend_logs: true` logs request prompts and model responses for compliance, spend attribution, and debugging.
+- **Retention Period**: `maximum_spend_logs_retention_period: "7d"` retains spend logs for 7 days.
+- **Cleanup Schedule**: Automated daily pruning at 04:00 AM (`maximum_spend_logs_cleanup_cron: "0 4 * * *"`).
+- **Safety Bounds**: Bounded batches (`batch_size: 1000`, `max_batches: 500`) with a maximum execution budget (`run_budget: "5m"`, `batch_timeout: "30s"`) to avoid database lock contention.
+
+### LiteLLM Redis In-Memory Cache & Cluster Coordination
+The stack includes a dedicated **Redis 7** instance (`redis:7-alpine`) providing:
+- **LLM Response Caching**: Identical prompts and parameters are cached in Redis with ultra-low latency (`x-litellm-cache-key`), saving inference latency and API tokens.
+- **Cluster Coordination**: Centralized Redis storage for real-time spend counters, model rate-limiting (`RPM`/`TPM`), and session state.
 
 ---
 
