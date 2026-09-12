@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Observability &amp; Autonomous AI SRE Platform</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2338bdf8'/%3E%3Cstop offset='100%25' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='14' fill='%230b1120' stroke='url(%23g)' stroke-width='2.5'/%3E%3Cpath d='M9 16 L14 21 L23 11' fill='none' stroke='url(%23g)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    /* -------------------------------------------------------------
+       DESIGN SYSTEM & CSS VARIABLES
+       ------------------------------------------------------------- */
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+      
+      /* Base Dark Theme (Midnight Slate) */
+      --bg-body: #080c14;
+      --bg-surface: #0f172a;
+      --bg-surface-elevated: #15203b;
+      --bg-surface-glass: rgba(15, 23, 42, 0.75);
+      --bg-surface-subtle: #1e293b;
+      
+      --border-base: #1e293b;
+      --border-focus: #3b82f6;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --primary-subtle: rgba(59, 130, 246, 0.12);
+      --primary-glow: rgba(59, 130, 246, 0.35);
+
+      --cyan: #38bdf8;
+      --cyan-subtle: rgba(56, 189, 248, 0.12);
+      --emerald: #10b981;
+      --emerald-subtle: rgba(16, 185, 129, 0.12);
+      --amber: #f59e0b;
+      --amber-subtle: rgba(245, 158, 11, 0.12);
+      --violet: #8b5cf6;
+      --violet-subtle: rgba(139, 92, 246, 0.12);
+      
+      --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border-subtle);
+      --card-shadow-hover: 0 12px 30px -4px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-focus);
+    }
+
+    /* Deep Blue Ocean Theme */
+    [data-theme="ocean"] {
+      --bg-body: #040d1a;
+      --bg-surface: #0a192f;
+      --bg-surface-elevated: #0f2747;
+      --bg-surface-glass: rgba(10, 25, 47, 0.85);
+      --bg-surface-subtle: #163259;
+      
+      --border-base: #1b3a6b;
+      --border-focus: #60a5fa;
+      --border-subtle: rgba(96, 165, 250, 0.15);
+
+      --text-main: #f0fdfa;
+      --text-muted: #8ec5fc;
+      --text-dim: #5c8bb8;
+      
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-subtle: rgba(37, 99, 235, 0.2);
+      --primary-glow: rgba(37, 99, 235, 0.45);
+
+      --card-shadow: 0 4px 24px -2px rgba(2, 6, 23, 0.7), 0 0 0 1px var(--border-subtle);
+      --card-shadow-hover: 0 12px 32px -4px rgba(2, 6, 23, 0.9), 0 0 0 1px var(--border-focus);
+    }
+
+    /* Minimal Light Theme */
+    [data-theme="light"] {
+      --bg-body: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-surface-elevated: #f1f5f9;
+      --bg-surface-glass: rgba(255, 255, 255, 0.85);
+      --bg-surface-subtle: #e2e8f0;
+      
+      --border-base: #e2e8f0;
+      --border-focus: #2563eb;
+      --border-subtle: rgba(0, 0, 0, 0.06);
+
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-subtle: rgba(37, 99, 235, 0.08);
+      --primary-glow: rgba(37, 99, 235, 0.2);
+
+      --card-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 0 0 1px var(--border-subtle);
+      --card-shadow-hover: 0 12px 24px -4px rgba(15, 23, 42, 0.12), 0 0 0 1px var(--border-focus);
+    }
+
+    /* -------------------------------------------------------------
+       GLOBAL RESET & BASE STYLES
+       ------------------------------------------------------------- */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    /* Ambient background gradient */
+    .ambient-glow {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 480px;
+      background: radial-gradient(circle at 50% 20%, var(--primary-glow) 0%, rgba(56, 189, 248, 0.08) 45%, transparent 70%);
+      filter: blur(80px);
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.65;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* -------------------------------------------------------------
+       HEADER & NAVIGATION
+       ------------------------------------------------------------- */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      background: var(--bg-surface-glass);
+      border-bottom: 1px solid var(--border-base);
+      transition: all 0.2s ease;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 4.25rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-icon {
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 0.5rem;
+      background: linear-gradient(135deg, var(--cyan), var(--primary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 0 16px var(--primary-glow);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.75rem;
+      font-size: 0.925rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .nav-links a:hover {
+      color: var(--text-main);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .theme-select-wrapper {
+      display: flex;
+      background: var(--bg-surface-subtle);
+      border: 1px solid var(--border-base);
+      border-radius: 0.5rem;
+      padding: 0.2rem;
+      gap: 0.2rem;
+    }
+
+    .theme-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.35rem 0.65rem;
+      border-radius: 0.35rem;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+    }
+
+    .theme-btn.active {
+      background: var(--bg-surface);
+      color: var(--text-main);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1.15rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 2px 10px var(--primary-glow);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 16px var(--primary-glow);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      color: var(--text-main);
+      border-color: var(--border-base);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-surface-subtle);
+      border-color: var(--border-focus);
+    }
+
+    .btn-sm {
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    /* -------------------------------------------------------------
+       HERO SECTION
+       ------------------------------------------------------------- */
+    .hero {
+      padding: 5rem 0 3.5rem;
+      text-align: center;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.9rem;
+      border-radius: 9999px;
+      background: var(--primary-subtle);
+      border: 1px solid var(--border-subtle);
+      font-size: 0.825rem;
+      font-weight: 600;
+      color: var(--cyan);
+      margin-bottom: 1.5rem;
+    }
+
+    .status-dot {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 10px var(--emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: 0.6; }
+    }
+
+    .hero-title {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 800;
+      line-height: 1.12;
+      letter-spacing: -0.035em;
+      margin-bottom: 1.25rem;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-title .gradient-text {
+      background: linear-gradient(135deg, var(--text-main) 30%, var(--cyan) 75%, var(--primary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      color: var(--text-muted);
+      max-width: 740px;
+      margin: 0 auto 2.25rem;
+      line-height: 1.6;
+    }
+
+    .hero-cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 3.5rem;
+    }
+
+    /* Live Stack Metric Strip */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      padding: 1.25rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-base);
+      border-radius: 0.85rem;
+      box-shadow: var(--card-shadow);
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 0.5rem;
+    }
+
+    .stat-val {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+
+    .stat-label {
+      font-size: 0.775rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.25rem;
+    }
+
+    /* -------------------------------------------------------------
+       SECTION COMMON STYLES
+       ------------------------------------------------------------- */
+    .section {
+      padding: 4.5rem 0;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .section-header {
+      margin-bottom: 3rem;
+      text-align: center;
+    }
+
+    .section-tag {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+      color: var(--cyan);
+      margin-bottom: 0.5rem;
+    }
+
+    .section-title {
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* -------------------------------------------------------------
+       SRE AGENT & ROOT CAUSE ANALYSIS (AURA DEEP DIVE)
+       ------------------------------------------------------------- */
+    .aura-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      align-items: stretch;
+    }
+
+    @media (max-width: 960px) {
+      .aura-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .aura-feature-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-base);
+      border-radius: 1rem;
+      padding: 2.25rem;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      width: fit-content;
+      margin-bottom: 1.25rem;
+    }
+
+    .badge-violet {
+      background: var(--violet-subtle);
+      color: var(--violet);
+      border: 1px solid rgba(139, 92, 246, 0.25);
+    }
+
+    .badge-cyan {
+      background: var(--cyan-subtle);
+      color: var(--cyan);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .badge-emerald {
+      background: var(--emerald-subtle);
+      color: var(--emerald);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .badge-amber {
+      background: var(--amber-subtle);
+      color: var(--amber);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+
+    .aura-card-title {
+      font-size: 1.45rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.015em;
+    }
+
+    .aura-card-text {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+    }
+
+    .flow-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+      padding: 0.75rem;
+      background: var(--bg-surface-elevated);
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .step-num {
+      width: 1.65rem;
+      height: 1.65rem;
+      border-radius: 50%;
+      background: var(--primary-subtle);
+      color: var(--cyan);
+      font-weight: 700;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .step-content h5 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.15rem;
+    }
+
+    .step-content p {
+      font-size: 0.825rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* Terminal Simulation Card */
+    .terminal-card {
+      background: #050811;
+      border: 1px solid var(--border-base);
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      font-family: var(--font-mono);
+    }
+
+    .terminal-header {
+      background: #0d1322;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-base);
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 0.45rem;
+    }
+
+    .dot {
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #eab308; }
+    .dot-green { background: #22c55e; }
+
+    .terminal-title {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .terminal-body {
+      padding: 1.25rem;
+      font-size: 0.825rem;
+      color: #cbd5e1;
+      line-height: 1.7;
+      overflow-x: auto;
+      flex-grow: 1;
+    }
+
+    .term-prompt { color: var(--cyan); }
+    .term-cmd { color: #f8fafc; font-weight: 600; }
+    .term-output { color: #94a3b8; }
+    .term-highlight { color: #38bdf8; }
+    .term-success { color: #34d399; }
+    .term-alert { color: #f87171; }
+    .term-warn { color: #fbbf24; }
+
+    /* -------------------------------------------------------------
+       OSS SOFTWARE STACK CARDS
+       ------------------------------------------------------------- */
+    .tab-nav {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 2.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 0.5rem 1.25rem;
+      border-radius: 9999px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-base);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      border-color: var(--border-focus);
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 2px 10px var(--primary-glow);
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 480px) {
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .software-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-base);
+      border-radius: 0.85rem;
+      padding: 1.75rem;
+      box-shadow: var(--card-shadow);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .software-card:hover {
+      border-color: var(--border-focus);
+      transform: translateY(-2px);
+      box-shadow: var(--card-shadow-hover);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .software-icon-wrapper {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 0.65rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .software-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .software-tagline {
+      font-size: 0.825rem;
+      color: var(--cyan);
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .software-desc {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+      line-height: 1.55;
+    }
+
+    .spec-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 1.5rem;
+      background: var(--bg-surface-subtle);
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+    }
+
+    .spec-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .spec-list li::before {
+      content: "•";
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 1rem;
+      margin-top: auto;
+    }
+
+    .auth-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+    }
+
+    .auth-pill.public { background: rgba(56, 189, 248, 0.15); color: var(--cyan); }
+    .auth-pill.basic { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+    .auth-pill.bearer { background: rgba(139, 92, 246, 0.15); color: var(--violet); }
+
+    /* -------------------------------------------------------------
+       ARCHITECTURE & FLOW
+       ------------------------------------------------------------- */
+    .arch-wrapper {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-base);
+      border-radius: 1rem;
+      padding: 2.5rem;
+      box-shadow: var(--card-shadow);
+    }
+
+    .arch-diagram {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+      position: relative;
+    }
+
+    @media (max-width: 960px) {
+      .arch-diagram {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .arch-col {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .arch-col-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--cyan);
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .arch-node {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-base);
+      border-radius: 0.5rem;
+      padding: 0.85rem;
+      font-size: 0.825rem;
+      transition: all 0.15s ease;
+    }
+
+    .arch-node:hover {
+      border-color: var(--border-focus);
+      background: var(--bg-surface-subtle);
+    }
+
+    .arch-node-name {
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.2rem;
+    }
+
+    .arch-node-desc {
+      color: var(--text-dim);
+      font-size: 0.75rem;
+    }
+
+    /* -------------------------------------------------------------
+       API & CODE QUICK START
+       ------------------------------------------------------------- */
+    .code-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 860px) {
+      .code-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .code-box {
+      background: #050811;
+      border: 1px solid var(--border-base);
+      border-radius: 0.85rem;
+      overflow: hidden;
+    }
+
+    .code-box-header {
+      background: #0d1322;
+      padding: 0.65rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-base);
+      font-size: 0.775rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .copy-btn {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      transition: all 0.15s ease;
+    }
+
+    .copy-btn:hover {
+      color: var(--text-main);
+      background: var(--bg-surface-subtle);
+    }
+
+    .code-box pre {
+      padding: 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+      overflow-x: auto;
+    }
+
+    /* -------------------------------------------------------------
+       FOOTER
+       ------------------------------------------------------------- */
+    .footer {
+      border-top: 1px solid var(--border-base);
+      padding: 3rem 0;
+      background: var(--bg-surface);
+      margin-top: 5rem;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-main);
+    }
+
+    /* SVG Icons */
+    .icon {
+      width: 1.15rem;
+      height: 1.15rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      display: inline-block;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <!-- Ambient backdrop glow -->
+  <div class="ambient-glow"></div>
+
+  <!-- Header / Navigation Bar -->
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a href="#" class="brand">
+        <div class="brand-icon">
+          <svg class="icon" viewBox='0 0 24 24'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>
+        </div>
+        <span>O11yStack<span style="color:var(--cyan)">.ai</span></span>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#aura-sre">AURA SRE Agent</a>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#oss-stack">OSS Components</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#quickstart">Quickstart</a>
+      </nav>
+
+      <div class="nav-actions">
+        <div class="theme-select-wrapper">
+          <button class="theme-btn active" id="btn-dark" onclick="setTheme('dark')" title="Midnight Slate Dark">Dark</button>
+          <button class="theme-btn" id="btn-ocean" onclick="setTheme('ocean')" title="Deep Blue Ocean">Blue</button>
+          <button class="theme-btn" id="btn-light" onclick="setTheme('light')" title="Minimal Light">Light</button>
+        </div>
+        <a href="/grafana/" class="btn btn-primary btn-sm">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Grafana
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="status-badge">
+          <span class="status-dot"></span>
+          Stack Active &bull; neoson-o11y.duckdns.org &bull; 18/18 Services Healthy
+        </div>
+        <h1 class="hero-title">
+          Unified Observability &amp; <br/>
+          <span class="gradient-text">Autonomous AI SRE Platform</span>
+        </h1>
+        <p class="hero-desc">
+          Zero-overhead telemetry correlation with VictoriaMetrics, VictoriaLogs, VictoriaTraces, and Grafana — augmented by Mezmo AURA for autonomous multi-agent root-cause incident investigation.
+        </p>
+        <div class="hero-cta">
+          <a href="/grafana/" class="btn btn-primary">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            Launch Grafana Portal
+          </a>
+          <a href="#aura-sre" class="btn btn-secondary">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.1 12.5"/></svg>
+            Explore AURA SRE AI
+          </a>
+          <a href="/litellm/ui/" class="btn btn-secondary">
+            <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            LiteLLM AI Gateway
+          </a>
+        </div>
+
+        <!-- Live Status Metric Strip -->
+        <div class="stats-strip">
+          <div class="stat-item">
+            <div class="stat-val"><span style="color:var(--emerald)">18</span>/18</div>
+            <div class="stat-label">Running Containers</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-val">100%</div>
+            <div class="stat-label">Telemetry Coverage</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-val">1 Year</div>
+            <div class="stat-label">Data Retention</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-val">216</div>
+            <div class="stat-label">AURA MCP Tools</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-val" style="color:var(--cyan)">TLS 1.3</div>
+            <div class="stat-label">Let's Encrypt Active</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mezmo AURA SRE AI Agent Deep Dive -->
+    <section id="aura-sre" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Autonomous Root-Cause Analysis</div>
+          <h2 class="section-title">Mezmo AURA AI SRE Agent</h2>
+          <p class="section-desc">
+            An autonomous multi-agent reasoning engine that ingests alerts, interrogates metrics, logs, and distributed traces, and isolates the precise root cause in seconds.
+          </p>
+        </div>
+
+        <div class="aura-grid">
+          <!-- Left: Capabilities & Workflow -->
+          <div class="aura-feature-card">
+            <div>
+              <div class="card-badge badge-violet">
+                <svg class="icon" style="width:0.85rem;height:0.85rem" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                Multi-Agent Architecture
+              </div>
+              <h3 class="aura-card-title">How AURA Investigates Incidents</h3>
+              <p class="aura-card-text">
+                Rather than relying on a single prompt, AURA deploys an <strong>Orchestrator Coordinator</strong> that delegates investigation workflows to specialized domain sub-agents using 216 live Model Context Protocol (MCP) tools:
+              </p>
+
+              <div class="flow-steps">
+                <div class="flow-step">
+                  <div class="step-num">1</div>
+                  <div class="step-content">
+                    <h5>Anomaly &amp; Metric Anomaly Detection</h5>
+                    <p>Queries VictoriaMetrics via PromQL to pinpoint p99 latency spikes, CPU throttling, or memory saturation.</p>
+                  </div>
+                </div>
+
+                <div class="flow-step">
+                  <div class="step-num">2</div>
+                  <div class="step-content">
+                    <h5>Distributed Trace &amp; Span Drilldown</h5>
+                    <p>Interrogates VictoriaTraces to traverse parent/child spans and identify bottleneck microservices or slow DB queries.</p>
+                  </div>
+                </div>
+
+                <div class="flow-step">
+                  <div class="step-num">3</div>
+                  <div class="step-content">
+                    <h5>LogsQL Clustering &amp; Error Signature Mining</h5>
+                    <p>Filters VictoriaLogs with high-speed regex to locate stack traces, panic strings, and HTTP 5xx anomalies.</p>
+                  </div>
+                </div>
+
+                <div class="flow-step">
+                  <div class="step-num">4</div>
+                  <div class="step-content">
+                    <h5>Root Cause Synthesis &amp; Mitigation</h5>
+                    <p>Synthesizes full cross-domain telemetry into an executive RCA report with exact commit/configuration fix recommendations.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+              <a href="/aura/v1/chat/completions" class="btn btn-primary btn-sm">
+                AURA API Endpoint
+              </a>
+              <a href="/litellm/ui/" class="btn btn-secondary btn-sm">
+                LiteLLM Playground
+              </a>
+            </div>
+          </div>
+
+          <!-- Right: Live Simulation / Terminal View -->
+          <div class="terminal-card">
+            <div class="terminal-header">
+              <div class="window-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <span class="terminal-title">aura-sre-investigator &bull; live reasoning trace</span>
+              <span style="font-size:0.7rem;color:var(--emerald)">CONNECTED</span>
+            </div>
+            <div class="terminal-body">
+              <p><span class="term-prompt">sre@o11ystack:~$</span> <span class="term-cmd">curl -X POST https://neoson-o11y.duckdns.org/aura/v1/chat/completions \</span></p>
+              <p class="term-output">&nbsp;&nbsp;-H "Authorization: Basic &lt;credentials&gt;" \</p>
+              <p class="term-output">&nbsp;&nbsp;-d '{"model":"aura-sre-model", "messages":[{"role":"user","content":"Investigate 504 Gateway Timeouts in checkout-service"}]}'</p>
+              <br/>
+              <p><span class="term-highlight">[AURA Orchestrator]</span> Incident investigation initialized. Plan depth: 3 turns.</p>
+              <p><span class="term-highlight">[Worker: metrics-analyst]</span> PromQL: <span class="term-cmd">histogram_quantile(0.99, sum(rate(http_duration_bucket{service="checkout"}[5m])) by (le))</span></p>
+              <p class="term-output">&rarr; p99 latency spiked from 42ms to 4,820ms at 05:32:10 UTC.</p>
+              <br/>
+              <p><span class="term-highlight">[Worker: trace-analyst]</span> Trace query: <span class="term-cmd">service=checkout status=error minDuration=4s</span></p>
+              <p class="term-output">&rarr; Isolated span <span class="term-warn">db_query: SELECT * FROM payment_ledger FOR UPDATE</span> in postgres-backend taking 4.6s.</p>
+              <br/>
+              <p><span class="term-highlight">[Worker: log-analyst]</span> LogsQL: <span class="term-cmd">service:checkout AND level:error AND "connection pool exhausted"</span></p>
+              <p class="term-output">&rarr; 412 log occurrences: "FATAL: remaining connection slots reserved for non-replication superuser".</p>
+              <br/>
+              <div style="background:rgba(16,185,129,0.1);border-left:3px solid var(--emerald);padding:0.6rem 0.85rem;border-radius:0.25rem;">
+                <p class="term-success" style="font-weight:700">ROOT CAUSE DETERMINED:</p>
+                <p style="color:#e2e8f0">Checkout service connection pool exhaustion triggered by unindexed row-locking query on payment ledger during batch reconciliation.</p>
+                <p class="term-highlight" style="margin-top:0.35rem">&bull; Recommended fix: Add index on payment_ledger(status, created_at) and increase max_connections from 100 to 300 in postgresql.conf.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Comprehensive OSS Software Stack Matrix -->
+    <section id="oss-stack" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Enterprise Open Source Software</div>
+          <h2 class="section-title">The Complete Observability &amp; AI Stack</h2>
+          <p class="section-desc">
+            18 integrated, best-of-breed open-source containers running in harmony with mutual networks and optimized storage pipelines.
+          </p>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="tab-nav">
+          <button class="tab-btn active" onclick="filterCards('all', this)">All Components (18)</button>
+          <button class="tab-btn" onclick="filterCards('victoria', this)">Victoria Trio</button>
+          <button class="tab-btn" onclick="filterCards('ai', this)">AI &amp; MCP Gateway</button>
+          <button class="tab-btn" onclick="filterCards('telemetry', this)">Telemetry &amp; eBPF</button>
+          <button class="tab-btn" onclick="filterCards('infra', this)">Infra &amp; Security</button>
+        </div>
+
+        <div class="cards-grid">
+          <!-- 1. VictoriaMetrics -->
+          <div class="software-card" data-category="victoria">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#f97316">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                </div>
+                <span class="auth-pill basic">Basic Auth</span>
+              </div>
+              <h4 class="software-name">VictoriaMetrics</h4>
+              <div class="software-tagline">Time-Series Metrics TSDB</div>
+              <p class="software-desc">
+                Ultra-fast, cost-effective Prometheus-compatible TSDB. Consumes up to 10x less RAM than vanilla Prometheus, with 1-year persistent data retention.
+              </p>
+              <ul class="spec-list">
+                <li>Port: :8428 (Internal) &bull; /vmetrics/ (Public)</li>
+                <li>Full PromQL &amp; MetricsQL support</li>
+                <li>Built-in VMUI graphical metrics explorer</li>
+                <li>Zero-cost high cardinality metric ingestion</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">vmetrics/vmui</span>
+              <a href="/vmetrics/vmui/" class="btn btn-primary btn-sm">Launch VMUI &rarr;</a>
+            </div>
+          </div>
+
+          <!-- 2. VictoriaLogs -->
+          <div class="software-card" data-category="victoria">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#06b6d4">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </div>
+                <span class="auth-pill basic">Basic Auth</span>
+              </div>
+              <h4 class="software-name">VictoriaLogs</h4>
+              <div class="software-tagline">High-Throughput Log Engine</div>
+              <p class="software-desc">
+                Next-generation logging solution designed for structured and unstructured logs. Offers up to 30x compression and revolutionary LogsQL syntax.
+              </p>
+              <ul class="spec-list">
+                <li>Port: :9428 (Internal) &bull; /vlogs/ (Public)</li>
+                <li>Powerful LogsQL pipeline queries</li>
+                <li>Integrated VictoriaLogs Web UI</li>
+                <li>1-year log retention on host SSD</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">vlogs/select/vmui</span>
+              <a href="/vlogs/select/vmui/" class="btn btn-primary btn-sm">Launch Logs &rarr;</a>
+            </div>
+          </div>
+
+          <!-- 3. VictoriaTraces -->
+          <div class="software-card" data-category="victoria">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#a855f7">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="6" y1="9" x2="6" y2="15"/><circle cx="18" cy="12" r="3"/><path d="m8.5 7.5 7 3"/><path d="m8.5 16.5 7-3"/></svg>
+                </div>
+                <span class="auth-pill basic">Basic Auth</span>
+              </div>
+              <h4 class="software-name">VictoriaTraces</h4>
+              <div class="software-tagline">Distributed Tracing Backend</div>
+              <p class="software-desc">
+                Scalable, high-volume distributed tracing storage natively receiving OTLP gRPC traces from OpenTelemetry collectors and eBPF probes.
+              </p>
+              <ul class="spec-list">
+                <li>Port: :10428 (HTTP) &bull; :4317 (OTLP gRPC)</li>
+                <li>Compatible with Jaeger &amp; Tempo visualization</li>
+                <li>Trace spans correlated with metrics and logs</li>
+                <li>Built-in VMUI trace waterfall explorer</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">vtraces/select/vmui</span>
+              <a href="/vtraces/select/vmui/" class="btn btn-primary btn-sm">Launch Traces &rarr;</a>
+            </div>
+          </div>
+
+          <!-- 4. Grafana -->
+          <div class="software-card" data-category="victoria">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#f59e0b">
+                  <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </div>
+                <span class="auth-pill" style="background:rgba(245,158,11,0.15);color:var(--amber)">Grafana Login</span>
+              </div>
+              <h4 class="software-name">Grafana 11+</h4>
+              <div class="software-tagline">Unified Observability Portal</div>
+              <p class="software-desc">
+                The premier visualization dashboard suite pre-configured with automated datasources for VictoriaMetrics, VictoriaLogs, and VictoriaTraces.
+              </p>
+              <ul class="spec-list">
+                <li>Port: :3000 (Internal) &bull; /grafana/ (Public)</li>
+                <li>Backed by dedicated MySQL 8.0 for persistence</li>
+                <li>Pre-provisioned dashboards for Node, Processes &amp; VM</li>
+                <li>Integrated Grafana MCP Service Account token</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">Default: admin</span>
+              <a href="/grafana/" class="btn btn-primary btn-sm">Open Grafana &rarr;</a>
+            </div>
+          </div>
+
+          <!-- 5. Mezmo AURA AI Agent -->
+          <div class="software-card" data-category="ai">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:var(--violet)">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.1 12.5"/></svg>
+                </div>
+                <span class="auth-pill basic">Basic Auth</span>
+              </div>
+              <h4 class="software-name">Mezmo AURA</h4>
+              <div class="software-tagline">Autonomous SRE AI Agent</div>
+              <p class="software-desc">
+                Multi-agent incident investigator using LiteLLM MCP hub to execute 216 live tools across metrics, logs, traces, and Grafana alert states.
+              </p>
+              <ul class="spec-list">
+                <li>Port: :8080 (Internal) &bull; /aura/ (Public)</li>
+                <li>OpenAI-compatible /v1/chat/completions API</li>
+                <li>Streaming SSE output with multi-turn planning</li>
+                <li>Automated hypothesis testing &amp; remediation</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">REST &amp; Streaming</span>
+              <a href="/aura/v1/models" class="btn btn-primary btn-sm">API Models &rarr;</a>
+            </div>
+          </div>
+
+          <!-- 6. LiteLLM Proxy & MCP Gateway -->
+          <div class="software-card" data-category="ai">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:var(--cyan)">
+                  <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                </div>
+                <span class="auth-pill bearer">Master Key</span>
+              </div>
+              <h4 class="software-name">LiteLLM Gateway</h4>
+              <div class="software-tagline">AI Proxy &amp; MCP Hub</div>
+              <p class="software-desc">
+                High-performance universal LLM proxy routing 100+ providers (OpenRouter, Gemini, Groq, Ollama) and hosting authenticated MCP tool connections.
+              </p>
+              <ul class="spec-list">
+                <li>Port: :4000 (Internal) &bull; /litellm/ (Public)</li>
+                <li>Interactive Web UI Playground with model testing</li>
+                <li>Backed by PostgreSQL 16 &amp; Redis 7 cache</li>
+                <li>Native Model Context Protocol (MCP) streamable hub</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">litellm/ui</span>
+              <a href="/litellm/ui/" class="btn btn-primary btn-sm">LiteLLM UI &rarr;</a>
+            </div>
+          </div>
+
+          <!-- 7. Grafana Beyla -->
+          <div class="software-card" data-category="telemetry">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#10b981">
+                  <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <span class="auth-pill public">eBPF Core</span>
+              </div>
+              <h4 class="software-name">Grafana Beyla</h4>
+              <div class="software-tagline">Zero-Code eBPF Auto-Instrumentation</div>
+              <p class="software-desc">
+                Kernel-level eBPF probes inspecting HTTP/HTTPS, gRPC, and SQL traffic with zero code modifications, sending RED metrics and traces to OTEL Collector.
+              </p>
+              <ul class="spec-list">
+                <li>Kernel eBPF: Ingests all system ports (1-65535)</li>
+                <li>Zero-overhead HTTP/gRPC span generation</li>
+                <li>Auto-detects backend latency and error codes</li>
+                <li>Exports directly to OTLP pipeline</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">Kernel Layer</span>
+              <span class="btn btn-secondary btn-sm" style="cursor:default">Auto Active</span>
+            </div>
+          </div>
+
+          <!-- 8. OpenTelemetry Collector Contrib -->
+          <div class="software-card" data-category="telemetry">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#6366f1">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                </div>
+                <span class="auth-pill public">Pipeline</span>
+              </div>
+              <h4 class="software-name">OTEL Collector</h4>
+              <div class="software-tagline">Telemetry Routing Engine</div>
+              <p class="software-desc">
+                Vendor-agnostic proxy receiving metrics, traces, and host logs, processing batch buffers, and fanning out telemetry to VictoriaMetrics and VictoriaTraces.
+              </p>
+              <ul class="spec-list">
+                <li>Port: :4317 (gRPC) &bull; :4318 (HTTP) &bull; :55679 (zPages)</li>
+                <li>Prometheus scrape jobs for Node &amp; Process exporters</li>
+                <li>Host filelog receiver streaming /var/log to VLogs</li>
+                <li>Batching, memory limiter, and retry queueing</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">Internal OTLP</span>
+              <span class="btn btn-secondary btn-sm" style="cursor:default">Active</span>
+            </div>
+          </div>
+
+          <!-- 9. Node Exporter & Process Exporter -->
+          <div class="software-card" data-category="telemetry">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#ec4899">
+                  <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                </div>
+                <span class="auth-pill public">System Metrics</span>
+              </div>
+              <h4 class="software-name">Exporters (Node &amp; Proc)</h4>
+              <div class="software-tagline">Host Hardware &amp; Thread Telemetry</div>
+              <p class="software-desc">
+                Granular hardware metric collection including CPU cores, memory pages, disk I/O, network bandwidth, and individual per-process resource tracking.
+              </p>
+              <ul class="spec-list">
+                <li>Node Exporter (:9100) &bull; Process Exporter (:9256)</li>
+                <li>Host filesystem /proc and /sys inspection</li>
+                <li>Tracks Docker daemon, databases, and LLM workers</li>
+                <li>Scraped every 15s into VictoriaMetrics</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">Kernel Metrics</span>
+              <span class="btn btn-secondary btn-sm" style="cursor:default">Active</span>
+            </div>
+          </div>
+
+          <!-- 10. Nginx Reverse Proxy -->
+          <div class="software-card" data-category="infra">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#0ea5e9">
+                  <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                </div>
+                <span class="auth-pill public">Port 80/443</span>
+              </div>
+              <h4 class="software-name">Nginx Gateway</h4>
+              <div class="software-tagline">SSL Termination &amp; Routing</div>
+              <p class="software-desc">
+                High-performance reverse proxy terminating HTTPS with HTTP/2, enforcing Basic Auth over sensitive backends, and proxying subpaths seamlessly.
+              </p>
+              <ul class="spec-list">
+                <li>HTTP &rarr; HTTPS automated 301 redirection</li>
+                <li>Secured with Let's Encrypt TLS 1.3 certificates</li>
+                <li>HTTP Basic Auth (.htpasswd) on Victoria suite &amp; AURA</li>
+                <li>Subpath rewriting for unified single-port access</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">Port 443</span>
+              <a href="/" class="btn btn-primary btn-sm">Home &rarr;</a>
+            </div>
+          </div>
+
+          <!-- 11. DuckDNS & Let's Encrypt -->
+          <div class="software-card" data-category="infra">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#eab308">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+                </div>
+                <span class="auth-pill public">Auto-Sync</span>
+              </div>
+              <h4 class="software-name">DuckDNS &amp; Let's Encrypt</h4>
+              <div class="software-tagline">Dynamic DNS &amp; ACME SSL</div>
+              <p class="software-desc">
+                Automated dynamic IP synchronization every 5 minutes with automated DNS-01 Let's Encrypt challenge for trusted zero-warning TLS certificates.
+              </p>
+              <ul class="spec-list">
+                <li>Domain: neoson-o11y.duckdns.org</li>
+                <li>Host Public IP: 213.136.84.111</li>
+                <li>Automated ACME DNS-01 verification script</li>
+                <li>Continuous IP drift detection and updates</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">DNS-01 Active</span>
+              <span class="btn btn-secondary btn-sm" style="cursor:default">Healthy</span>
+            </div>
+          </div>
+
+          <!-- 12. Stateful Backends (MySQL, Postgres, Redis) -->
+          <div class="software-card" data-category="infra">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#64748b">
+                  <svg class="icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                </div>
+                <span class="auth-pill basic">Persistence</span>
+              </div>
+              <h4 class="software-name">Databases &amp; Cache</h4>
+              <div class="software-tagline">MySQL 8, Postgres 16, Redis 7</div>
+              <p class="software-desc">
+                Dedicated database backends isolating application state: MySQL for Grafana dashboards, PostgreSQL for LiteLLM keys &amp; audit logs, Redis for caching.
+              </p>
+              <ul class="spec-list">
+                <li>MySQL 8.0: Grafana relational schema &amp; alerts</li>
+                <li>PostgreSQL 16: LiteLLM user tokens &amp; spend logs</li>
+                <li>Redis 7: In-memory LLM response cache &amp; rate limiting</li>
+                <li>Isolated docker volumes for zero-loss restarts</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">Docker Volumes</span>
+              <span class="btn btn-secondary btn-sm" style="cursor:default">Protected</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture & End-to-End Pipeline -->
+    <section id="architecture" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Zero-Latency Pipeline</div>
+          <h2 class="section-title">End-to-End Data &amp; AI Flow</h2>
+          <p class="section-desc">
+            How requests traverse from host processes into kernel eBPF probes, the OpenTelemetry Collector, Victoria storage, and Mezmo AURA reasoning.
+          </p>
+        </div>
+
+        <div class="arch-wrapper">
+          <div class="arch-diagram">
+            <!-- Col 1: Sources -->
+            <div class="arch-col">
+              <div class="arch-col-title">
+                <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>
+                1. Telemetry Sources
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">Grafana Beyla</div>
+                <div class="arch-node-desc">eBPF auto-instrumentation of kernel syscalls, HTTP/gRPC latencies, and SQL queries.</div>
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">Node Exporter</div>
+                <div class="arch-node-desc">CPU load, memory RAM usage, network interfaces, disk I/O performance.</div>
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">Process Exporter</div>
+                <div class="arch-node-desc">Thread states, user/kernel CPU, per-process memory consumption.</div>
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">Host System Logs</div>
+                <div class="arch-node-desc">Linux systemd journal, /var/log directory, docker container stdout/stderr.</div>
+              </div>
+            </div>
+
+            <!-- Col 2: Ingestion & Pipeline -->
+            <div class="arch-col">
+              <div class="arch-col-title">
+                <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/></svg>
+                2. Ingestion &amp; OTEL
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">OTEL Collector Contrib</div>
+                <div class="arch-node-desc">OTLP gRPC (:4317) &amp; HTTP (:4318) endpoints buffering incoming streams.</div>
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">Batch &amp; Memory Processors</div>
+                <div class="arch-node-desc">De-duplicates spans, enforces rate limits, and batches telemetry for efficient write operations.</div>
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">Exporters Dispatch</div>
+                <div class="arch-node-desc">Routes Prometheus metrics to VMetrics, OTLP traces to VTraces, and logs to VLogs.</div>
+              </div>
+            </div>
+
+            <!-- Col 3: Victoria Storage Trio -->
+            <div class="arch-col">
+              <div class="arch-col-title">
+                <svg class="icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                3. Victoria Trio Storage
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">VictoriaMetrics (:8428)</div>
+                <div class="arch-node-desc">TSDB storing 1-year telemetry with ultra-compressed block format.</div>
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">VictoriaLogs (:9428)</div>
+                <div class="arch-node-desc">LogsQL database handling millions of log entries/sec with sub-second queries.</div>
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">VictoriaTraces (:10428)</div>
+                <div class="arch-node-desc">OpenTelemetry trace repository storing end-to-end distributed span graphs.</div>
+              </div>
+            </div>
+
+            <!-- Col 4: AI & Visualization -->
+            <div class="arch-col">
+              <div class="arch-col-title">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                4. AI &amp; Visualization
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">Grafana 11 Portal</div>
+                <div class="arch-node-desc">Pre-configured dashboards for real-time human SRE exploration.</div>
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">LiteLLM MCP Hub</div>
+                <div class="arch-node-desc">Exposes authenticated streamable tools to LLM reasoning models.</div>
+              </div>
+              <div class="arch-node">
+                <div class="arch-node-name">Mezmo AURA SRE Agent</div>
+                <div class="arch-node-desc">Orchestrates multi-agent incident triage and automates root-cause discovery.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quickstart & API Code Box -->
+    <section id="quickstart" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Developer &amp; SRE Quickstart</div>
+          <h2 class="section-title">Query Telemetry &amp; Trigger AI SRE</h2>
+          <p class="section-desc">
+            Standard HTTP REST and curl snippets for querying VictoriaMetrics, VictoriaLogs, and triggering AURA RCA investigations.
+          </p>
+        </div>
+
+        <div class="code-grid">
+          <!-- Snippet 1: AURA Investigation -->
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>Trigger AURA SRE Incident Investigation</span>
+              <button class="copy-btn" onclick="copySnippet(this, 'code-aura')">Copy</button>
+            </div>
+            <pre id="code-aura">curl -s -X POST https://neoson-o11y.duckdns.org/aura/v1/chat/completions \
+  -u "admin:243o4ln4pLEFDnFn5FJU" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "aura-sre-model",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Diagnose elevated 5xx error rate and identify offending microservice."
+      }
+    ],
+    "stream": false
+  }'</pre>
+          </div>
+
+          <!-- Snippet 2: Query VictoriaLogs via LogsQL -->
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>Query VictoriaLogs with LogsQL</span>
+              <button class="copy-btn" onclick="copySnippet(this, 'code-vlogs')">Copy</button>
+            </div>
+            <pre id="code-vlogs">curl -s -u "admin:243o4ln4pLEFDnFn5FJU" \
+  "https://neoson-o11y.duckdns.org/vlogs/select/logsql/query" \
+  -d 'query=_time:5m AND level:error'</pre>
+          </div>
+
+          <!-- Snippet 3: PromQL instant query -->
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>Query VictoriaMetrics with PromQL</span>
+              <button class="copy-btn" onclick="copySnippet(this, 'code-vmetrics')">Copy</button>
+            </div>
+            <pre id="code-vmetrics">curl -s -u "admin:243o4ln4pLEFDnFn5FJU" \
+  "https://neoson-o11y.duckdns.org/vmetrics/api/v1/query" \
+  -d 'query=sum(rate(node_cpu_seconds_total{mode="idle"}[5m]))'</pre>
+          </div>
+
+          <!-- Snippet 4: LiteLLM Chat API -->
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>LiteLLM Unified Multi-Model Gateway</span>
+              <button class="copy-btn" onclick="copySnippet(this, 'code-litellm')">Copy</button>
+            </div>
+            <pre id="code-litellm">curl -s -X POST https://neoson-o11y.duckdns.org/litellm/v1/chat/completions \
+  -H "Authorization: Bearer sk-ElUHuO63KrplqdqhQJNsFL5hK4e1N5xI" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openrouter-llama-70b",
+    "messages": [{"role":"user","content":"Summarize recent system health."}]
+  }'</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div>
+        <strong style="color:var(--text-main)">O11yStack &bull; Autonomous AI SRE Platform</strong>
+        <p style="margin-top:0.25rem">Integrated VictoriaMetrics, VictoriaLogs, VictoriaTraces, Grafana, LiteLLM &amp; Mezmo AURA.</p>
+      </div>
+      <div class="footer-links">
+        <a href="/grafana/">Grafana</a>
+        <a href="/vmetrics/vmui/">VictoriaMetrics</a>
+        <a href="/vlogs/select/vmui/">VictoriaLogs</a>
+        <a href="/vtraces/select/vmui/">VictoriaTraces</a>
+        <a href="/litellm/ui/">LiteLLM</a>
+        <a href="https://github.com/dirtyren/o11ystack" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Script for Theme Toggle, Tab Filters, and Snippet Copy -->
+  <script>
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('o11y_theme', theme);
+      
+      document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById('btn-' + theme);
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    // Load saved theme or default to dark
+    const savedTheme = localStorage.getItem('o11y_theme') || 'dark';
+    setTheme(savedTheme);
+
+    function filterCards(category, btnElement) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btnElement.classList.add('active');
+
+      const cards = document.querySelectorAll('.software-card');
+      cards.forEach(card => {
+        if (category === 'all' || card.getAttribute('data-category') === category) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function copySnippet(btn, elementId) {
+      const code = document.getElementById(elementId).innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const originalText = btn.innerText;
+        btn.innerText = 'Copied!';
+        btn.style.color = 'var(--emerald)';
+        setTimeout(() => {
+          btn.innerText = originalText;
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>
