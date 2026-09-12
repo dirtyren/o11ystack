@@ -346,6 +346,25 @@ services:
       - o11y-net
 
   # ==========================================
+  # Vector Log Collector (Docker Logs -> VictoriaLogs)
+  # ==========================================
+  vector:
+    image: timberio/vector:latest-alpine
+    container_name: vector
+    restart: unless-stopped
+    user: "0:0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
+      - vector-data:/var/lib/vector
+    depends_on:
+      - victorialogs
+      - victoriametrics
+    networks:
+      - o11y-net
+
+  # ==========================================
   # Nginx Reverse Proxy with SSL & Basic Auth
   # ==========================================
   nginx:
@@ -387,7 +406,9 @@ volumes:
   grafana-data:
   postgres-data:
   redis-data:
+  vector-data:
 
 networks:
   o11y-net:
     driver: bridge
+
