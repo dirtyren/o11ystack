@@ -397,6 +397,21 @@ docker compose up -d litellm aura
 
 ---
 
+## MCP Query Safeguards & Best Practices
+
+To avoid context window overflows and ensure reliable execution across model providers:
+
+1. **VictoriaTraces Query Bounds (`trace-analyst`)**:
+   - Always supply restrictive limits (e.g., `limit: 20` or less).
+   - Use `minDuration: "200ms"` to filter out routine fast operations and isolate latency outliers.
+   - Constrain time bounds (`start`/`end` or `lookback <= 15m`).
+2. **Grafana Health Check Tool (`incident-responder`)**:
+   - When calling `grafana-check_datasources_health`, explicitly pass `uids: []` (empty JSON array) rather than omitting or sending null.
+3. **LiteLLM Token Buffering & Truncation**:
+   - LiteLLM protects the 1M token limit of Vertex AI / Google AI Studio by enforcing `max_input_tokens: 950000` and `drop_params: true`.
+
+---
+
 ## Troubleshooting & Diagnostics
 
 ```bash

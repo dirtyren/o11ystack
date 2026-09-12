@@ -338,6 +338,7 @@ services:
     image: otel/opentelemetry-collector-contrib:latest
     container_name: otel-collector
     restart: unless-stopped
+    user: "0:0"
     volumes:
       - ./otel-collector/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
       - /var/log:/var/log:ro
