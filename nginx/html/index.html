@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neoson is The Man // Observability &amp; AI Stack</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5' fill='%23050a06' stroke='%2300ff66' stroke-width='4'/%3E%3Cpath d='M25 45 C25 40, 42 35, 48 45 C48 55, 30 55, 25 45 Z' fill='%2300ff66'/%3E%3Cpath d='M75 45 C75 40, 58 35, 52 45 C52 55, 70 55, 75 45 Z' fill='%2300ff66'/%3E%3Cline x1='48' y1='44' x2='52' y2='44' stroke='%2300ff66' stroke-width='3'/%3E%3Ctext x='50' y='76' fill='%2300ff66' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3ENEO%3C/text%3E%3C/svg%3E">
+  <style>
+    :root {
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      
+      /* Default: Matrix Green */
+      --primary: #00ff66;
+      --primary-dim: #00993d;
+      --primary-glow: rgba(0, 255, 102, 0.45);
+      --primary-subtle: rgba(0, 255, 102, 0.08);
+      --bg-base: #030804;
+      --bg-surface: rgba(6, 16, 9, 0.82);
+      --bg-surface-hover: rgba(10, 26, 15, 0.92);
+      --border-color: rgba(0, 255, 102, 0.22);
+      --border-hover: rgba(0, 255, 102, 0.65);
+      --text-main: #e2fced;
+      --text-muted: #7ca88b;
+      --scanline-opacity: 0.18;
+    }
+
+    [data-theme="amber"] {
+      --primary: #ffb000;
+      --primary-dim: #b37b00;
+      --primary-glow: rgba(255, 176, 0, 0.45);
+      --primary-subtle: rgba(255, 176, 0, 0.08);
+      --bg-base: #080501;
+      --bg-surface: rgba(18, 11, 3, 0.82);
+      --bg-surface-hover: rgba(28, 17, 4, 0.92);
+      --border-color: rgba(255, 176, 0, 0.22);
+      --border-hover: rgba(255, 176, 0, 0.65);
+      --text-main: #fff5e0;
+      --text-muted: #b89868;
+    }
+
+    [data-theme="cyan"] {
+      --primary: #00f0ff;
+      --primary-dim: #009aa3;
+      --primary-glow: rgba(0, 240, 255, 0.45);
+      --primary-subtle: rgba(0, 240, 255, 0.08);
+      --bg-base: #010609;
+      --bg-surface: rgba(3, 14, 20, 0.82);
+      --bg-surface-hover: rgba(5, 23, 34, 0.92);
+      --border-color: rgba(0, 240, 255, 0.22);
+      --border-hover: rgba(0, 240, 255, 0.65);
+      --text-main: #e0faff;
+      --text-muted: #6b9ca4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      transition: background-color 0.4s ease, color 0.4s ease;
+    }
+
+    /* Matrix Digital Rain Canvas */
+    #matrix-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      opacity: 0.72;
+      pointer-events: none;
+    }
+
+    /* CRT Scanline Overlay */
+    .crt-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%),
+                  linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 3px, 6px 100%;
+      z-index: 1;
+      pointer-events: none;
+      opacity: var(--scanline-opacity);
+    }
+
+    /* Layout Wrapper */
+    .layout-wrapper {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding: 24px 20px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    /* Navigation / Top Bar */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), inset 0 0 12px var(--primary-subtle);
+      margin-bottom: 28px;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .neo-emblem {
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 8px var(--primary-glow));
+      transition: transform 0.3s ease;
+    }
+
+    .brand-group:hover .neo-emblem {
+      transform: rotate(30deg) scale(1.08);
+    }
+
+    .brand-text h1 {
+      font-family: var(--font-mono);
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: var(--primary);
+      text-transform: uppercase;
+      text-shadow: 0 0 10px var(--primary-glow);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-text p {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      margin-top: 3px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      color: var(--text-main);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      backdrop-filter: blur(8px);
+    }
+
+    .btn:hover {
+      border-color: var(--border-hover);
+      color: var(--primary);
+      background: var(--bg-surface-hover);
+      box-shadow: 0 0 14px var(--primary-glow);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--primary-subtle);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-icon {
+      padding: 8px 12px;
+    }
+
+    /* System Status Ribbon */
+    .status-ribbon {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 12px 20px;
+      margin-bottom: 28px;
+      border-radius: 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      background-color: var(--primary);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--primary);
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 12px var(--primary); }
+      50% { transform: scale(1.3); opacity: 0.7; box-shadow: 0 0 20px var(--primary); }
+    }
+
+    .status-stats {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      color: var(--text-muted);
+    }
+
+    .status-stats span strong {
+      color: var(--primary);
+    }
+
+    /* Search & Filter */
+    .filter-bar {
+      margin-bottom: 24px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      outline: none;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 16px var(--primary-glow);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    /* Grid of Service Cards */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 24px;
+      margin-bottom: 36px;
+    }
+
+    .card {
+      position: relative;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: var(--border-hover);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 20px var(--primary-subtle);
+      background: var(--bg-surface-hover);
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .app-icon-wrapper {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+      transition: all 0.25s ease;
+    }
+
+    .card:hover .app-icon-wrapper {
+      border-color: var(--primary);
+      box-shadow: 0 0 16px var(--primary-glow);
+    }
+
+    .app-icon-wrapper svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .card-header-info {
+      flex: 1;
+    }
+
+    .card-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 4px;
+    }
+
+    .card-title {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.04em;
+    }
+
+    .badges-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--primary-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--primary);
+    }
+
+    .badge-auth {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #f87171;
+    }
+
+    .badge-public {
+      background: rgba(34, 197, 94, 0.12);
+      border-color: rgba(34, 197, 94, 0.35);
+      color: #4ade80;
+    }
+
+    .card-desc {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 14px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .endpoint-path {
+      color: var(--primary);
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    .card-arrow {
+      color: var(--text-muted);
+      transition: transform 0.2s ease, color 0.2s ease;
+    }
+
+    .card:hover .card-arrow {
+      color: var(--primary);
+      transform: translateX(4px);
+    }
+
+    /* Modal Styling */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--bg-base);
+      border: 1px solid var(--primary);
+      box-shadow: 0 0 35px var(--primary-glow);
+      border-radius: 14px;
+      max-width: 820px;
+      width: 100%;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalSlideIn 0.25s ease-out;
+    }
+
+    @keyframes modalSlideIn {
+      from { transform: scale(0.94); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-surface);
+    }
+
+    .modal-title {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+      transition: color 0.2s ease;
+    }
+
+    .modal-close:hover {
+      color: var(--primary);
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .modal-body h3 {
+      font-family: var(--font-mono);
+      color: var(--primary);
+      margin: 20px 0 10px 0;
+      font-size: 1.05rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-body h3:first-child {
+      margin-top: 0;
+    }
+
+    .modal-body p {
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .code-box {
+      background: #000;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-main);
+      position: relative;
+      margin-bottom: 16px;
+      overflow-x: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .code-box pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      color: var(--primary);
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 12px;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--primary);
+      background: var(--primary-subtle);
+    }
+
+    .key-badge {
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      color: #fff;
+      font-size: 0.75rem;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: auto;
+      padding: 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .footer-quote {
+      color: var(--primary);
+      font-style: italic;
+    }
+
+    @media (max-width: 768px) {
+      .services-grid {
+        grid-template-columns: 1fr;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+      .header-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body data-theme="green">
+  <!-- CRT Scanlines overlay -->
+  <div class="crt-overlay" id="crtOverlay"></div>
+
+  <!-- Matrix Canvas -->
+  <canvas id="matrix-canvas"></canvas>
+
+  <!-- Layout -->
+  <div class="layout-wrapper">
+    <!-- Header -->
+    <header>
+      <div class="brand-group">
+        <!-- Neo Cyber Emblem SVG -->
+        <svg class="neo-emblem" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Hexagon Frame -->
+          <polygon points="50,4 96,27 96,73 50,96 4,73 4,27" stroke="var(--primary)" stroke-width="3.5" fill="var(--bg-base)" />
+          <polygon points="50,12 88,31 88,69 50,88 12,69 12,31" stroke="var(--border-color)" stroke-width="1.5" fill="none" />
+          
+          <!-- Matrix Rain Traces inside Emblem -->
+          <line x1="30" y1="20" x2="30" y2="40" stroke="var(--primary)" stroke-width="1.5" stroke-dasharray="2 4" />
+          <line x1="70" y1="20" x2="70" y2="40" stroke="var(--primary)" stroke-width="1.5" stroke-dasharray="3 3" />
+          
+          <!-- Neo's Iconic Sunglasses -->
+          <path d="M22 47 C23 39, 44 37, 47 47 C45 56, 26 56, 22 47 Z" fill="var(--primary)" />
+          <path d="M78 47 C77 39, 56 37, 53 47 C55 56, 74 56, 78 47 Z" fill="var(--primary)" />
+          <line x1="47" y1="46" x2="53" y2="46" stroke="var(--primary)" stroke-width="2.5" />
+          
+          <!-- Tech Monogram -->
+          <text x="50" y="77" fill="var(--primary)" font-family="monospace" font-weight="900" font-size="13" text-anchor="middle" letter-spacing="2">NEO</text>
+        </svg>
+
+        <div class="brand-text">
+          <h1>Neoson is The Man <span style="font-size:0.75rem; vertical-align:middle; opacity:0.8;">[v2.0]</span></h1>
+          <p>UNIFIED OBSERVABILITY, EBPF TRACING &amp; AI AGENT PLATFORM</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Theme Toggle -->
+        <button class="btn btn-icon" id="themeBtn" title="Cycle Matrix Themes (Green / Amber / Cyan) [Hotkey: T]">
+          <span id="themeLabel">● Matrix</span>
+        </button>
+
+        <!-- Rain Toggle -->
+        <button class="btn btn-icon" id="rainBtn" title="Toggle Digital Rain Animation [Hotkey: M]">
+          <span id="rainIcon">⚡ Rain: ON</span>
+        </button>
+
+        <!-- Help Modal Button -->
+        <button class="btn btn-primary" id="helpBtn" title="Open Operator Guide & Docs [Hotkey: ?]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          Help / Docs
+        </button>
+      </div>
+    </header>
+
+    <!-- Status Ribbon -->
+    <div class="status-ribbon">
+      <div class="status-indicator">
+        <div class="pulse-dot"></div>
+        <span>CORE MESH ONLINE // <strong style="color:var(--primary);">HTTPS ENCRYPTED</strong></span>
+      </div>
+      <div class="status-stats">
+        <span>SECURITY: <strong>STRICT TLS</strong></span>
+        <span>UPTIME: <strong id="clockDisplay">00:00:00 UTC</strong></span>
+        <span>NETWORK: <strong>NGINX EDGE</strong></span>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <input type="text" id="serviceSearch" class="search-input" placeholder="Search stack components (e.g. Grafana, Traces, AURA, LiteLLM, Logs)..." autocomplete="off" />
+    </div>
+
+    <!-- Grid of App Cards -->
+    <main class="services-grid" id="servicesGrid">
+
+      <!-- Card 1: Grafana -->
+      <a class="card" href="/grafana/" target="_blank" rel="noopener noreferrer" data-keywords="grafana dashboards mysql metrics logs visualization alert">
+        <div>
+          <div class="card-top">
+            <div class="app-icon-wrapper" style="border-color: rgba(249, 115, 22, 0.4);">
+              <!-- Grafana Flame SVG -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2c1 3 4 4.5 4 7.5a4 4 0 0 1-8 0C8 6.5 11 5 12 2z"></path>
+                <path d="M12 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" fill="#f97316"></path>
+              </svg>
+            </div>
+            <div class="card-header-info">
+              <div class="card-title-row">
+                <h2 class="card-title">Grafana</h2>
+              </div>
+              <div class="badges-row">
+                <span class="badge">Dashboards</span>
+                <span class="badge badge-public">App Auth</span>
+              </div>
+            </div>
+          </div>
+          <p class="card-desc">
+            Unified telemetry cockpit backed by MySQL. Pre-provisioned dashboards with real-time views into VictoriaMetrics, VictoriaLogs, and VictoriaTraces.
+          </p>
+        </div>
+        <div class="card-footer">
+          <span class="endpoint-path">/grafana/</span>
+          <span class="card-arrow">Launch &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Card 2: VictoriaMetrics -->
+      <a class="card" href="/vmetrics/vmui/" target="_blank" rel="noopener noreferrer" data-keywords="victoriametrics vmetrics vmui prometheus tsdb metrics time-series">
+        <div>
+          <div class="card-top">
+            <div class="app-icon-wrapper" style="border-color: rgba(6, 182, 212, 0.4);">
+              <!-- Metrics Wave Graph SVG -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+            </div>
+            <div class="card-header-info">
+              <div class="card-title-row">
+                <h2 class="card-title">VictoriaMetrics</h2>
+              </div>
+              <div class="badges-row">
+                <span class="badge">Metrics TSDB</span>
+                <span class="badge badge-auth">Basic Auth</span>
+              </div>
+            </div>
+          </div>
+          <p class="card-desc">
+            Ultra-fast, high-cardinality time series database with 1-year retention. Features native VMUI interactive query builder and Prometheus API compatibility.
+          </p>
+        </div>
+        <div class="card-footer">
+          <span class="endpoint-path">/vmetrics/vmui/</span>
+          <span class="card-arrow">Launch &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Card 3: VictoriaLogs -->
+      <a class="card" href="/vlogs/select/vmui/" target="_blank" rel="noopener noreferrer" data-keywords="victorialogs vlogs logs logsql explorer otel collector">
+        <div>
+          <div class="card-top">
+            <div class="app-icon-wrapper" style="border-color: rgba(59, 130, 246, 0.4);">
+              <!-- Terminal / Log File SVG -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 17 10 11 4 5"></polyline>
+                <line x1="12" y1="19" x2="20" y2="19"></line>
+              </svg>
+            </div>
+            <div class="card-header-info">
+              <div class="card-title-row">
+                <h2 class="card-title">VictoriaLogs</h2>
+              </div>
+              <div class="badges-row">
+                <span class="badge">LogSQL UI</span>
+                <span class="badge badge-auth">Basic Auth</span>
+              </div>
+            </div>
+          </div>
+          <p class="card-desc">
+            High-throughput, efficient log engine with LogSQL explorer. Ingests all Docker container, system, and agent logs via the OpenTelemetry Collector pipeline.
+          </p>
+        </div>
+        <div class="card-footer">
+          <span class="endpoint-path">/vlogs/select/vmui/</span>
+          <span class="card-arrow">Launch &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Card 4: VictoriaTraces -->
+      <a class="card" href="/vtraces/select/vmui/" target="_blank" rel="noopener noreferrer" data-keywords="victoriatraces vtraces traces ebpf beyla jaeger tempo tracing">
+        <div>
+          <div class="card-top">
+            <div class="app-icon-wrapper" style="border-color: rgba(168, 85, 247, 0.4);">
+              <!-- Distributed Traces / Nodes SVG -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+            </div>
+            <div class="card-header-info">
+              <div class="card-title-row">
+                <h2 class="card-title">VictoriaTraces</h2>
+              </div>
+              <div class="badges-row">
+                <span class="badge">eBPF Traces</span>
+                <span class="badge badge-auth">Basic Auth</span>
+              </div>
+            </div>
+          </div>
+          <p class="card-desc">
+            Distributed tracing engine coupled with Grafana Beyla eBPF kernel instrumentation. Ingests low-overhead distributed traces without code modifications.
+          </p>
+        </div>
+        <div class="card-footer">
+          <span class="endpoint-path">/vtraces/select/vmui/</span>
+          <span class="card-arrow">Launch &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Card 5: LiteLLM Proxy & MCP -->
+      <a class="card" href="/litellm/ui/" target="_blank" rel="noopener noreferrer" data-keywords="litellm proxy ai mcp model context protocol llm openai redis cache">
+        <div>
+          <div class="card-top">
+            <div class="app-icon-wrapper" style="border-color: rgba(16, 185, 129, 0.4);">
+              <!-- AI Neural / Chip SVG -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                <rect x="9" y="9" width="6" height="6"></rect>
+                <line x1="9" y1="1" x2="9" y2="4"></line>
+                <line x1="15" y1="1" x2="15" y2="4"></line>
+                <line x1="9" y1="20" x2="9" y2="23"></line>
+                <line x1="15" y1="20" x2="15" y2="23"></line>
+                <line x1="20" y1="9" x2="23" y2="9"></line>
+                <line x1="20" y1="14" x2="23" y2="14"></line>
+                <line x1="1" y1="9" x2="4" y2="9"></line>
+                <line x1="1" y1="14" x2="4" y2="14"></line>
+              </svg>
+            </div>
+            <div class="card-header-info">
+              <div class="card-title-row">
+                <h2 class="card-title">LiteLLM Proxy &amp; MCP</h2>
+              </div>
+              <div class="badges-row">
+                <span class="badge">AI Gateway</span>
+                <span class="badge badge-public">Proxy Auth</span>
+              </div>
+            </div>
+          </div>
+          <p class="card-desc">
+            Multi-LLM gateway and MCP server hub with Redis semantic caching, rate limiting, and spend tracking. Bridges models to VictoriaMetrics, Logs, and Traces tools.
+          </p>
+        </div>
+        <div class="card-footer">
+          <span class="endpoint-path">/litellm/ui/</span>
+          <span class="card-arrow">Launch &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Card 6: Mezmo AURA -->
+      <a class="card" href="/aura/" target="_blank" rel="noopener noreferrer" data-keywords="aura mezmo sre ai autonomous agent remediation incident">
+        <div>
+          <div class="card-top">
+            <div class="app-icon-wrapper" style="border-color: rgba(14, 165, 233, 0.4);">
+              <!-- Autonomous Agent / Radar Shield SVG -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                <circle cx="12" cy="11" r="3"></circle>
+              </svg>
+            </div>
+            <div class="card-header-info">
+              <div class="card-title-row">
+                <h2 class="card-title">Mezmo AURA SRE</h2>
+              </div>
+              <div class="badges-row">
+                <span class="badge">Autonomous AI</span>
+                <span class="badge badge-auth">Basic Auth</span>
+              </div>
+            </div>
+          </div>
+          <p class="card-desc">
+            Autonomous Site Reliability Engineer powered by specialized AI agents. Continuously investigates root causes across metrics, logs, and traces using MCP.
+          </p>
+        </div>
+        <div class="card-footer">
+          <span class="endpoint-path">/aura/</span>
+          <span class="card-arrow">Launch &rarr;</span>
+        </div>
+      </a>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <div>
+        <span class="footer-quote">&ldquo;There is a difference between knowing the path and walking the path.&rdquo;</span> &mdash; Morpheus
+      </div>
+      <div>
+        <span>NEOSON OPERATIONAL PLATFORM &bull; PRESS <span class="key-badge">?</span> FOR HELP &bull; <span class="key-badge">T</span> TO CYCLE THEMES</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Help & Operator Modal -->
+  <div class="modal-backdrop" id="helpModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="50,4 96,27 96,73 50,96 4,73 4,27" />
+          </svg>
+          Operator Command Console // Neoson Matrix Stack
+        </div>
+        <button class="modal-close" id="modalCloseBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h3>1. Authentication &amp; Access Controls</h3>
+        <p>
+          The root landing page (<code>/</code>) is publicly accessible without credentials.
+          Individual backend services require either HTTP Basic Authentication or application-level tokens:
+        </p>
+        <div class="code-box">
+          <pre>Default Basic Auth: user=admin | password=(configured in .env / nginx/.htpasswd)</pre>
+        </div>
+
+        <h3>2. Quick Testing &amp; Diagnostic Commands</h3>
+        <p>Test VictoriaMetrics Instant Query:</p>
+        <div class="code-box">
+          <pre>curl -k -u admin:admin https://localhost/vmetrics/api/v1/query?query=up</pre>
+          <button class="copy-btn" onclick="copySnippet('curl -k -u admin:admin https://localhost/vmetrics/api/v1/query?query=up')">Copy</button>
+        </div>
+
+        <p>Test VictoriaLogs LogSQL Search:</p>
+        <div class="code-box">
+          <pre>curl -k -u admin:admin -G 'https://localhost/vlogs/select/logsql/query' --data-urlencode 'query=*'</pre>
+          <button class="copy-btn" onclick="copySnippet('curl -k -u admin:admin -G \'https://localhost/vlogs/select/logsql/query\' --data-urlencode \'query=*\'')">Copy</button>
+        </div>
+
+        <p>Query LiteLLM Models &amp; Health:</p>
+        <div class="code-box">
+          <pre>curl -k https://localhost/litellm/health/readiness</pre>
+          <button class="copy-btn" onclick="copySnippet('curl -k https://localhost/litellm/health/readiness')">Copy</button>
+        </div>
+
+        <p>Query Mezmo AURA Health Endpoint:</p>
+        <div class="code-box">
+          <pre>curl -k -u admin:admin https://localhost/aura/health</pre>
+          <button class="copy-btn" onclick="copySnippet('curl -k -u admin:admin https://localhost/aura/health')">Copy</button>
+        </div>
+
+        <h3>3. Keyboard Shortcuts</h3>
+        <p>
+          <span class="key-badge">?</span> or <span class="key-badge">H</span> : Open this Operator Help Console<br>
+          <span class="key-badge">T</span> : Cycle Color Matrix (Phosphor Green &rarr; Zion Amber &rarr; Nebuchadnezzar Cyan)<br>
+          <span class="key-badge">M</span> : Pause / Resume Matrix Digital Rain<br>
+          <span class="key-badge">C</span> : Toggle CRT Scanline Shader<br>
+          <span class="key-badge">Esc</span> : Close open modals
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Clock ---
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0] + ' ' + (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+      document.getElementById('clockDisplay').textContent = timeStr;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // --- Search & Filtering ---
+    const searchInput = document.getElementById('serviceSearch');
+    const cards = document.querySelectorAll('#servicesGrid .card');
+
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      cards.forEach(card => {
+        const keywords = card.getAttribute('data-keywords') || '';
+        const title = card.querySelector('.card-title').textContent.toLowerCase();
+        const desc = card.querySelector('.card-desc').textContent.toLowerCase();
+        if (!query || keywords.includes(query) || title.includes(query) || desc.includes(query)) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+
+    // --- Themes ---
+    const themes = ['green', 'amber', 'cyan'];
+    const themeLabels = { green: '● Matrix', amber: '● Amber', cyan: '● Cyan' };
+    let currentThemeIdx = 0;
+
+    function setTheme(theme) {
+      document.body.setAttribute('data-theme', theme);
+      document.getElementById('themeLabel').textContent = themeLabels[theme];
+      localStorage.setItem('matrix_theme', theme);
+    }
+
+    const savedTheme = localStorage.getItem('matrix_theme');
+    if (savedTheme && themes.includes(savedTheme)) {
+      currentThemeIdx = themes.indexOf(savedTheme);
+      setTheme(savedTheme);
+    }
+
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      currentThemeIdx = (currentThemeIdx + 1) % themes.length;
+      setTheme(themes[currentThemeIdx]);
+    });
+
+    // --- CRT Toggle ---
+    const crtOverlay = document.getElementById('crtOverlay');
+    function toggleCRT() {
+      crtOverlay.style.display = crtOverlay.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // --- Modal Handling ---
+    const helpModal = document.getElementById('helpModal');
+    const helpBtn = document.getElementById('helpBtn');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+    function openHelp() { helpModal.classList.add('active'); }
+    function closeHelp() { helpModal.classList.remove('active'); }
+
+    helpBtn.addEventListener('click', openHelp);
+    modalCloseBtn.addEventListener('click', closeHelp);
+    helpModal.addEventListener('click', (e) => {
+      if (e.target === helpModal) closeHelp();
+    });
+
+    // --- Copy Snippet ---
+    window.copySnippet = function(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard: ' + text);
+      }).catch(() => {
+        prompt('Copy command:', text);
+      });
+    };
+
+    // --- Keyboard Shortcuts ---
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+        if (e.key === 'Escape') e.target.blur();
+        return;
+      }
+      if (e.key === '?' || e.key === 'h' || e.key === 'H') {
+        openHelp();
+      } else if (e.key === 'Escape') {
+        closeHelp();
+      } else if (e.key === 't' || e.key === 'T') {
+        currentThemeIdx = (currentThemeIdx + 1) % themes.length;
+        setTheme(themes[currentThemeIdx]);
+      } else if (e.key === 'm' || e.key === 'M') {
+        toggleRain();
+      } else if (e.key === 'c' || e.key === 'C') {
+        toggleCRT();
+      } else if (e.key === '/') {
+        e.preventDefault();
+        searchInput.focus();
+      }
+    });
+
+    // --- Matrix Digital Rain Canvas ---
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+
+    let rainRunning = true;
+    let animationFrameId = null;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      initRain();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // Matrix characters: Latin, Katakana, digits, math symbols
+    const chars = '0123456789ABCDEF01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンNEO_SON*+-<>|=';
+    const charArray = chars.split('');
+    const fontSize = 15;
+    let columns = 0;
+    let drops = [];
+
+    function initRain() {
+      columns = Math.floor(canvas.width / fontSize);
+      drops = [];
+      for (let i = 0; i < columns; i++) {
+        drops[i] = Math.floor(Math.random() * -100);
+      }
+    }
+
+    function drawMatrix() {
+      if (!rainRunning) return;
+
+      // Subtle translucent background fade to create trail effect
+      ctx.fillStyle = 'rgba(3, 8, 4, 0.08)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Match rain color to current theme
+      const currentTheme = document.body.getAttribute('data-theme');
+      let baseColor = '#00ff66';
+      let headColor = '#d4ffea';
+      if (currentTheme === 'amber') {
+        baseColor = '#ffb000';
+        headColor = '#fff6d4';
+      } else if (currentTheme === 'cyan') {
+        baseColor = '#00f0ff';
+        headColor = '#e0fbff';
+      }
+
+      ctx.font = fontSize + 'px ' + getComputedStyle(document.documentElement).getPropertyValue('--font-mono');
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = charArray[Math.floor(Math.random() * charArray.length)];
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+
+        // Head of the drop is bright white/light tint
+        ctx.fillStyle = headColor;
+        ctx.fillText(text, x, y);
+
+        // Body of trail is matrix accent
+        ctx.fillStyle = baseColor;
+        ctx.fillText(text, x, y - fontSize);
+
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+
+      animationFrameId = requestAnimationFrame(drawMatrix);
+    }
+
+    function toggleRain() {
+      rainRunning = !rainRunning;
+      document.getElementById('rainIcon').textContent = rainRunning ? '⚡ Rain: ON' : '⚡ Rain: OFF';
+      if (rainRunning) {
+        drawMatrix();
+      } else {
+        cancelAnimationFrame(animationFrameId);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    document.getElementById('rainBtn').addEventListener('click', toggleRain);
+
+    // Initial setup
+    resizeCanvas();
+    drawMatrix();
+  </script>
+</body>
+</html>
