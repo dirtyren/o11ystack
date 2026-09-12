@@ -141,7 +141,7 @@ configure_environment() {
     echo -e "Please configure the initial passwords and parameters for the stack.\n"
 
     local s_host
-    s_host=$(prompt_text "Enter domain or IP for the server" "localhost")
+    s_host=$(prompt_text "Enter domain or IP for the server" "${SERVER_HOST:-neoson-o11y.duckdns.org}")
 
     echo -e "\n${YELLOW}--- Basic Authentication (VictoriaLogs, VictoriaMetrics, VictoriaTraces) ---${NC}"
     local b_user
@@ -195,6 +195,11 @@ SERVER_HOST=${s_host}
 SERVER_PROTOCOL=https
 HTTP_PORT=80
 HTTPS_PORT=443
+
+# DuckDNS Configuration
+DUCKDNS_TOKEN=${DUCKDNS_TOKEN:-}
+DUCKDNS_SUBDOMAINS=${DUCKDNS_SUBDOMAINS:-neoson-o11y}
+DUCKDNS_DOMAIN=${DUCKDNS_DOMAIN:-duckdns.org}
 
 # Storage Paths for Victoria Services (Retention: 1y)
 VLOGS_DATA_PATH=${vlogs_path}
@@ -330,9 +335,9 @@ deploy_stack() {
     # shellcheck disable=SC1090
     source "$ENV_FILE"
 
-    # Start remaining services: MCP servers, LiteLLM, Mezmo AURA, and Nginx
-    log_info "Starting MCP servers, LiteLLM proxy, Mezmo AURA agent, and Nginx reverse proxy..."
-    docker compose up -d mcp-victoriametrics mcp-victorialogs mcp-victoriatraces mcp-grafana litellm aura nginx
+    # Start remaining services: MCP servers, LiteLLM, Mezmo AURA, Nginx, and DuckDNS
+    log_info "Starting MCP servers, LiteLLM proxy, Mezmo AURA agent, Nginx reverse proxy, and DuckDNS..."
+    docker compose up -d mcp-victoriametrics mcp-victorialogs mcp-victoriatraces mcp-grafana litellm aura nginx duckdns
 
     log_success "All stack containers are up!"
 }
