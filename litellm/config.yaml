@@ -70,9 +70,14 @@ model_list:
       api_key: "os.environ/OPENROUTER_API_KEY"
 
   # Google Gemini Free Tier (15 RPM / 1M TPM free)
+  - model_name: "gemini-3.8-flash"
+    litellm_params:
+      model: "gemini/gemini-3.8-flash"
+      api_key: "os.environ/GEMINI_API_KEY"
+
   - model_name: "gemini-2.0-flash"
     litellm_params:
-      model: "gemini/gemini-2.0-flash"
+      model: "gemini/gemini-3.8-flash"
       api_key: "os.environ/GEMINI_API_KEY"
 
   # Groq Free Tier (Ultra-fast inference)
