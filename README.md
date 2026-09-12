@@ -437,8 +437,11 @@ The stack uses a single `.env` file (copied from `.env.example` or initialized i
 
 | Variable | Default / Format | Category | Description |
 | :--- | :--- | :--- | :--- |
-| `SERVER_HOST` | `localhost` | Server & Network | Domain or IP address used in Nginx SSL certificates and reverse proxy links. |
+| `SERVER_HOST` | `localhost` / `neoson-o11y.duckdns.org` | Server & Network | Domain or IP address used in Nginx SSL certificates and reverse proxy links. |
 | `SERVER_PROTOCOL` | `https` | Server & Network | Web access protocol (`https` recommended, SSL enabled by default). |
+| `DUCKDNS_TOKEN` | *(empty)* | Dynamic DNS & SSL | DuckDNS API token for automated dynamic DNS synchronization and Let's Encrypt DNS-01 ACME challenge. |
+| `DUCKDNS_SUBDOMAINS` | `neoson-o11y` | Dynamic DNS & SSL | DuckDNS subdomain name (`<subdomain>.duckdns.org`). |
+| `DUCKDNS_DOMAIN` | `duckdns.org` | Dynamic DNS & SSL | DuckDNS base domain. |
 | `HTTP_PORT` | `80` | Server & Network | Inbound host HTTP port, automatically redirected to HTTPS. |
 | `HTTPS_PORT` | `443` | Server & Network | Inbound host HTTPS port terminating TLS/SSL. |
 | `VLOGS_DATA_PATH` | `/var/lib/vlogs` | Storage & Retention | Host storage directory for VictoriaLogs (retains logs for 1 year). |
@@ -736,7 +739,7 @@ docker compose down -v
 
 ```
 .
-├── docker-compose.yml                     # Main service definitions (17 services)
+├── docker-compose.yml                     # Main service definitions (18 services)
 ├── deploy.sh                              # Interactive deployment script
 ├── .env.example                           # Configuration environment template
 ├── .gitignore                             # Git ignore rules for secrets
@@ -763,7 +766,10 @@ docker compose down -v
 ├── process-exporter/
 │   └── process-exporter.yml               # Process match rules for process-exporter
 └── scripts/
-    └── setup-grafana-mcp.sh               # Grafana MCP Admin Service Account provisioner
+    ├── setup-grafana-mcp.sh               # Grafana MCP Admin Service Account provisioner
+    ├── issue-ssl-duckdns.sh               # Let's Encrypt SSL issuance & renewal via DuckDNS
+    ├── duckdns-auth.sh                    # Certbot manual auth hook for DuckDNS TXT record
+    └── duckdns-cleanup.sh                 # Certbot manual cleanup hook for DuckDNS TXT record
 ```
 
 ---

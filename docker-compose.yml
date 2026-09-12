@@ -368,6 +368,17 @@ services:
       - grafana
       - litellm
       - aura
+  # ==========================================
+  # DuckDNS Dynamic DNS Updater
+  # ==========================================
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    container_name: duckdns
+    restart: unless-stopped
+    environment:
+      - SUBDOMAINS=${DUCKDNS_SUBDOMAINS:-neoson-o11y}
+      - TOKEN=${DUCKDNS_TOKEN}
+      - LOG_FILE=false
     networks:
       - o11y-net
 

@@ -11,3 +11,4 @@ nginx/certs/*.pem
 # Logs and runtime files
 *.log
 scratch/
+letsencrypt/
