@@ -314,8 +314,8 @@ deploy_stack() {
     log_info "Starting Docker Compose services..."
     cd "${STACK_DIR}"
 
-    # Start core databases, Victorias, and Vector log collector
-    docker compose up -d mysql postgres redis victoriametrics victorialogs victoriatraces node-exporter process-exporter otel-collector beyla vector
+    # Start core databases, Victorias, exporters, and Vector log collector
+    docker compose up -d mysql postgres redis victoriametrics victorialogs victoriatraces node-exporter process-exporter cadvisor otel-collector beyla vector
 
     log_info "Starting Grafana and waiting for database migrations..."
     docker compose up -d grafana
@@ -364,6 +364,7 @@ show_summary() {
     echo -e "  * VictoriaTraces UI:       ${CYAN}${base_url}/vtraces/select/vmui/${NC} ${YELLOW}(Basic Auth)${NC}"
     echo -e "  * LiteLLM Proxy API / UI:  ${CYAN}${base_url}/litellm/${NC}"
     echo -e "  * Mezmo AURA SRE Agent:    ${CYAN}${base_url}/aura/${NC}   ${YELLOW}(Basic Auth)${NC}"
+    echo -e "  * cAdvisor (Containers):   ${CYAN}http://localhost:8080${NC}"
 
     echo -e "\n${BOLD}Model Context Protocol (MCP) Endpoints (configured in LiteLLM):${NC}"
     echo -e "  * VictoriaMetrics MCP:     ${CYAN}http://mcp-victoriametrics:8080/sse${NC}"

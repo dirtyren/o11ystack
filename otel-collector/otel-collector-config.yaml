@@ -10,6 +10,10 @@ receivers:
           scrape_interval: 15s
           static_configs:
             - targets: ['process-exporter:9256']
+        - job_name: 'cadvisor'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['cadvisor:8080']
         - job_name: 'victoriametrics'
           scrape_interval: 15s
           static_configs:

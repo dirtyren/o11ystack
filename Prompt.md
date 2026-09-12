@@ -21,7 +21,7 @@ Build an all-in-one, self-hosted observability and autonomous AI SRE stack behin
    - **Process Exporter** (Per-process CPU, memory, thread, and file descriptor metrics).
    - **Grafana Beyla** (Zero-code Linux eBPF auto-instrumentation for OS/kernel processes, HTTP/gRPC/SQL traces).
    - **OpenTelemetry Collector Contrib**:
-     - *Metrics Pipeline*: Scrapes `node-exporter:9100`, `process-exporter:9256`, `victoriametrics:8428`, `victorialogs:9428`, and `victoriatraces:10428` -> exports via Prometheus Remote Write to VictoriaMetrics.
+      - *Metrics Pipeline*: Scrapes `node-exporter:9100`, `process-exporter:9256`, `cadvisor:8080`, `victoriametrics:8428`, `victorialogs:9428`, and `victoriatraces:10428` -> exports via Prometheus Remote Write to VictoriaMetrics.
      - *Logs Pipeline*: Tails `/var/log/**/*.log` -> exports via OTLP HTTP to VictoriaLogs (`/insert/opentelemetry/v1/logs`).
      - *Traces Pipeline*: Receives spans from Beyla and AURA via OTLP gRPC/HTTP (`:4317` / `:4318`) -> exports to VictoriaTraces (`:4317`).
 3. **Dedicated Relational Databases**:
