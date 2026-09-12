@@ -762,6 +762,20 @@ Inspect host and container resource utilization in Grafana Explore or the Victor
   ```
   *Threshold*: Working set > 90% indicates immediate danger of OOM kill.
 
+### 5. Production Observability Hardening
+
+1. **Resolve OTel Host Log Permissions**:
+   The `otel-collector` container is configured with `user: "0:0"` (root) in `docker-compose.yml`. This ensures the OpenTelemetry `filelog` receiver has read privileges to inspect protected system logs (`/var/log/syslog`, `/var/log/kern.log`, etc.).
+2. **Enforce Query Bounds on VictoriaTraces**:
+   When querying VictoriaTraces for distributed traces via MCP tools (`victoriatraces-traces`), always supply restrictive parameters:
+   - `limit`: `20` (or lower) to prevent trace payload inflation.
+   - `minDuration`: `"200ms"` to filter out fast transactions and pinpoint latency bottlenecks.
+   - `start` / `end` / `lookback`: bounded windows (e.g. 15 minutes) to avoid LLM context window overflows.
+3. **Fix Grafana Health Check Tool Calls**:
+   When invoking `grafana-check_datasources_health` via MCP, always explicitly pass `uids: []` (empty array) instead of omitting the parameter or passing null to query all datasource health states cleanly.
+4. **Monitor LiteLLM Token Buffering**:
+   LiteLLM is configured with `max_input_tokens: 950000`, `drop_params: true`, and `max_tokens: 8192` in `litellm/config.yaml` to reject or truncate requests approaching the 1M token barrier before reaching upstream model providers (Vertex AI / Google AI Studio).
+
 ---
 
 ## Verifying the Deployment

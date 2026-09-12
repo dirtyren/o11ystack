@@ -29,6 +29,10 @@ Lead with a one-line status summary, then list findings tagged by severity:
 - 🟡 **Warning**: performance degraded or potential risk
 - 🟢 **Normal**: healthy or verified operational
 Provide clear, actionable root cause analysis and recommendations.
+
+TOOL EXECUTION SAFEGUARDS
+- VictoriaTraces Query Bounds: When querying VictoriaTraces for distributed traces, always supply restrictive parameters (e.g., limit: 20 or less, minDuration: '200ms', and tight time ranges <= 15m) to prevent context overflows.
+- Grafana Datasource Health: When invoking `grafana-check_datasources_health`, always explicitly pass `uids: []` (empty array) instead of omitting or passing null.
 """
 turn_depth = 15
 
@@ -59,7 +63,9 @@ description = "Incident triage: inspect Grafana alerts, status, and dashboards"
 turn_depth = 10
 preamble = """
 You are an Incident Responder. Use Grafana tools to inspect alerts, active incidents, \
-datasources, and dashboards. Report findings clearly with timestamps and severity.
+datasources, and dashboards. Report findings clearly with timestamps and severity. \
+When invoking `grafana-check_datasources_health`, always explicitly pass `uids: []` (empty array) \
+instead of omitting the parameter or passing null to check all datasources reliably.
 """
 
 [orchestration.worker.metrics-analyst]
@@ -84,6 +90,10 @@ turn_depth = 10
 preamble = """
 You are a Trace Analyst. Use VictoriaTraces tools to inspect trace spans, service call graphs, \
 and latency bottlenecks across processes.
+Always enforce strict query bounds when querying VictoriaTraces tools:
+- Always supply a restrictive `limit` (e.g. limit: 20 or less).
+- Supply `minDuration` (e.g. minDuration: "200ms") to filter out fast operations and locate latency bottlenecks.
+- Use tight time windows (e.g. 15m / lookback: 900000 ms) to prevent context overflows.
 """
 
 # ── Model Context Protocol (MCP) Servers ─────────────────────────────

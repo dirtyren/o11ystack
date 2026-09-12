@@ -25,6 +25,8 @@ litellm_settings:
     host: os.environ/REDIS_HOST
     port: 6379
     password: os.environ/REDIS_PASSWORD
+  drop_params: true
+  max_tokens: 8192
 
 # MCP Servers accessible to LiteLLM and connected agents
 mcp_servers:
@@ -74,11 +76,13 @@ model_list:
     litellm_params:
       model: "gemini/gemini-3.8-flash"
       api_key: "os.environ/GEMINI_API_KEY"
+      max_input_tokens: 950000
 
   - model_name: "gemini-2.0-flash"
     litellm_params:
       model: "gemini/gemini-3.8-flash"
       api_key: "os.environ/GEMINI_API_KEY"
+      max_input_tokens: 950000
 
   # Groq Free Tier (Ultra-fast inference)
   - model_name: "groq-llama-3.3-70b"
