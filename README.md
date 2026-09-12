@@ -620,12 +620,6 @@ transport = "http_streamable"
 url = "http://litellm:4000/grafana/mcp"
 headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
 description = "Grafana dashboard, alerts, and datasources server via LiteLLM"
-
-[mcp.servers.litellm-hub]
-transport = "http_streamable"
-url = "http://litellm:4000/mcp"
-headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
-description = "LiteLLM Unified Observability MCP Hub"
 ```
 
 Benefits of this routing:

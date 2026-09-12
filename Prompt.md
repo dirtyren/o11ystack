@@ -231,7 +231,6 @@ In `otel-collector/otel-collector-config.yaml`:
     - `[mcp.servers.victorialogs]`: url `http://litellm:4000/victorialogs/mcp`, transport `http_streamable`, headers `{ Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }`.
     - `[mcp.servers.victoriatraces]`: url `http://litellm:4000/victoriatraces/mcp`, transport `http_streamable`, headers `{ Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }`.
     - `[mcp.servers.grafana]`: url `http://litellm:4000/grafana/mcp`, transport `http_streamable`, headers `{ Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }`.
-    - `[mcp.servers.litellm-hub]`: url `http://litellm:4000/mcp`, transport `http_streamable`.
   - Configure Coordinator and 4 specialist workers (`incident-responder`, `metrics-analyst`, `log-analyst`, `trace-analyst`) with appropriate `mcp_filter` tags.
 
 ### Step 9: Hardened Nginx Configuration & Critical Bug Avoidance
