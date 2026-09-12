@@ -1114,11 +1114,21 @@
       }
     }
 
-    function drawMatrix() {
+    let lastTime = 0;
+    const dropInterval = 70; // Slower, cinematic rain speed (~14 updates/sec)
+
+    function drawMatrix(currentTime) {
       if (!rainRunning) return;
 
+      animationFrameId = requestAnimationFrame(drawMatrix);
+
+      if (!currentTime) currentTime = performance.now();
+      const delta = currentTime - lastTime;
+      if (delta < dropInterval) return;
+      lastTime = currentTime - (delta % dropInterval);
+
       // Subtle translucent background fade to create trail effect
-      ctx.fillStyle = 'rgba(3, 8, 4, 0.08)';
+      ctx.fillStyle = 'rgba(3, 8, 4, 0.12)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Match rain color to current theme
@@ -1153,8 +1163,6 @@
         }
         drops[i]++;
       }
-
-      animationFrameId = requestAnimationFrame(drawMatrix);
     }
 
     function toggleRain() {
