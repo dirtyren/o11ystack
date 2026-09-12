@@ -27,6 +27,7 @@ A complete, production-grade observability and AI orchestration stack running on
 - [Grafana Datasources & Pre-Installed Dashboards](#grafana-datasources--pre-installed-dashboards)
 - [Model Context Protocol (MCP) Integration](#model-context-protocol-mcp-integration)
 - [OpenTelemetry & eBPF Auto-Instrumentation](#opentelemetry--ebpf-auto-instrumentation)
+- [Container Resource Telemetry & Actionable Recommendations](#container-resource-telemetry--actionable-recommendations)
 - [Verifying the Deployment](#verifying-the-deployment)
 - [Operations & Maintenance](#operations--maintenance)
 - [Troubleshooting](#troubleshooting)
@@ -152,6 +153,7 @@ flowchart TD
 | **MCP Grafana** | `grafana/mcp-grafana:latest` | `8000/tcp` (SSE) | Stateless | Admin-level Grafana MCP server capable of managing dashboards, alerts, and queries. |
 | **Node Exporter** | `prom/node-exporter:latest` | `9100/tcp` | Host `/proc`, `/sys`, `/` | Server hardware telemetry (CPU, RAM, Disks, Networks). |
 | **Process Exporter** | `ncabatoff/process-exporter:latest` | `9256/tcp` | Host `/proc`, `pid: host` | Per-process CPU, memory, IO, and fd consumption. |
+| **cAdvisor** | `gcr.io/cadvisor/cadvisor:v0.49.1` | `8080/tcp` | Host `/sys`, `/var/lib/docker`, `/dev/disk` | Per-container cgroup resource limits, CPU throttling, and working set memory telemetry. |
 | **OTel Collector** | `otel/opentelemetry-collector-contrib:latest` | `4317/tcp`, `4318/tcp` | Host `/var/log` | Pipelines server metrics, logs, and distributed traces into Victoria databases. |
 | **Vector** | `timberio/vector:latest-alpine` | `8686/tcp` | `vector-data` volume | High-performance log collector streaming all Docker Compose container stdout/stderr into VictoriaLogs. |
 | **Grafana Beyla** | `grafana/beyla:latest` | Host eBPF Probes | Linux Kernel | Zero-code, automatic eBPF tracing of all processes (HTTP/gRPC/SQL). |
@@ -644,6 +646,7 @@ The OpenTelemetry Collector (`otel-collector`) runs with three pipelines:
    - **Receivers**: Prometheus receiver scrapes:
      - `node-exporter:9100` (host metrics)
      - `process-exporter:9256` (per-process telemetry)
+     - `cadvisor:8080` (container cgroup resource limits, CPU throttling, and memory working set)
      - `victoriametrics:8428` (VictoriaMetrics internal metrics)
      - `victorialogs:9428` (VictoriaLogs internal metrics)
      - `victoriatraces:10428` (VictoriaTraces internal metrics)
@@ -655,6 +658,109 @@ The OpenTelemetry Collector (`otel-collector`) runs with three pipelines:
    - **Receivers**: `otlp` gRPC/HTTP receiver on ports `4317` and `4318`.
    - **Source**: **Grafana Beyla** attaches eBPF kernel probes across all running host processes without requiring code modification, streaming trace spans into the collector.
    - **Exporter**: `otlp/traces` forwards spans to `victoriatraces:4317`.
+
+---
+
+## Container Resource Telemetry & Actionable Recommendations
+
+To detect container throttling, CPU saturation, and memory limits across Docker Compose services, Google's **cAdvisor** is deployed to collect granular cgroup metrics for VictoriaMetrics and Grafana.
+
+### 1. Add cAdvisor to `docker-compose.yml`
+cAdvisor inspects running containers via the Docker socket and cgroup filesystem, exposing metrics on port `8080`:
+
+```yaml
+services:
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8080:8080"
+    devices:
+      - /dev/kmsg
+    networks:
+      - o11y-net
+```
+
+### 2. Configure VictoriaMetrics / vmagent / OTel Scrape Target
+Add `cadvisor:8080` to your Prometheus/VictoriaMetrics scrape configuration in `otel-collector/otel-collector-config.yaml`:
+
+```yaml
+scrape_configs:
+  - job_name: "cadvisor"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["cadvisor:8080"]
+```
+
+All metrics (`container_cpu_usage_seconds_total`, `container_spec_cpu_quota`, `container_memory_working_set_bytes`, etc.) are automatically scraped and remote-written to VictoriaMetrics.
+
+### 3. (Alternative) Docker Daemon Native Prometheus Metrics
+If you prefer not to deploy cAdvisor, enable Docker daemon's native Prometheus metrics endpoint in `/etc/docker/daemon.json`:
+
+```json
+{
+  "metrics-addr": "0.0.0.0:9323",
+  "experimental": true
+}
+```
+
+> [!NOTE]
+> cAdvisor provides significantly more granular per-container CPU/memory limit and cgroup metrics than the native Docker daemon metrics.
+
+### 4. Triage PromQL / MetricsQL Queries
+
+Inspect host and container resource utilization in Grafana Explore or the VictoriaMetrics UI (`/vmetrics/vmui/`):
+
+#### Host Utilization & Bottlenecks
+* **Host CPU Utilization (%)**:
+  ```promql
+  100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])))
+  ```
+  *Threshold*: Sustained usage > 85% indicates CPU saturation.
+* **Host Memory Utilization (%)**:
+  ```promql
+  100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))
+  ```
+  *Threshold*: Available memory < 10% or non-zero swap rates (`rate(node_vmstat_pgpgin[5m]) > 0`) indicates memory exhaustion.
+* **Host Load Average vs Cores**:
+  ```promql
+  node_load1 / on(instance) count by(instance) (node_cpu_seconds_total{mode="idle"})
+  ```
+  *Threshold*: Ratio > 1.0 indicates queuing and saturated compute.
+
+#### Container Utilization & Bottlenecks
+* **Container CPU Utilization (% of Limit)**:
+  ```promql
+  sum by(namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=""}[5m]))
+    /
+    sum by(namespace, pod, container) (container_spec_cpu_quota{container!=""} / container_spec_cpu_period{container!=""})
+    * 100
+  ```
+* **Container CPU Throttling Rate**:
+  ```promql
+  sum by(namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total[5m]))
+    /
+    sum by(namespace, pod, container) (rate(container_cpu_cfs_periods_total[5m]))
+    * 100
+  ```
+  *Threshold*: Sustained throttling > 15–20% causes high service latency.
+* **Container Memory Working Set (% of Limit)**:
+  ```promql
+  sum by(namespace, pod, container) (container_memory_working_set_bytes{container!=""})
+    /
+    sum by(namespace, pod, container) (container_spec_memory_limit_bytes{container!=""} > 0)
+    * 100
+  ```
+  *Threshold*: Working set > 90% indicates immediate danger of OOM kill.
 
 ---
 
