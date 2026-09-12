@@ -336,6 +336,7 @@ services:
     restart: unless-stopped
     pid: host
     privileged: true
+    init: true
     environment:
       BEYLA_SYSTEM_WIDE: "true"
       BEYLA_OPEN_PORT: "1-65535"
@@ -387,6 +388,8 @@ services:
       - grafana
       - litellm
       - aura
+    networks:
+      - o11y-net
   # ==========================================
   # DuckDNS Dynamic DNS Updater
   # ==========================================
