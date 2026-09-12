@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mezmo AURA // Autonomous SRE AI Agent Console</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5' fill='%23050a06' stroke='%2300ff66' stroke-width='4'/%3E%3Cpath d='M25 45 C25 40, 42 35, 48 45 C48 55, 30 55, 25 45 Z' fill='%2300ff66'/%3E%3Cpath d='M75 45 C75 40, 58 35, 52 45 C52 55, 70 55, 75 45 Z' fill='%2300ff66'/%3E%3Cline x1='48' y1='44' x2='52' y2='44' stroke='%2300ff66' stroke-width='3'/%3E%3Ctext x='50' y='76' fill='%2300ff66' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3EAURA%3C/text%3E%3C/svg%3E">
+  <style>
+    :root {
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      
+      /* Default: Matrix Green */
+      --primary: #00ff66;
+      --primary-dim: #00993d;
+      --primary-glow: rgba(0, 255, 102, 0.45);
+      --primary-subtle: rgba(0, 255, 102, 0.08);
+      --bg-base: #030804;
+      --bg-surface: rgba(6, 16, 9, 0.88);
+      --bg-surface-hover: rgba(10, 26, 15, 0.95);
+      --bg-card: rgba(8, 20, 12, 0.75);
+      --border-color: rgba(0, 255, 102, 0.22);
+      --border-hover: rgba(0, 255, 102, 0.65);
+      --text-main: #e2fced;
+      --text-muted: #7ca88b;
+      --text-dim: #4d7a5d;
+      --scanline-opacity: 0.15;
+      --cyan: #00f0ff;
+      --amber: #ffb000;
+      --violet: #c084fc;
+      --red: #f43f5e;
+    }
+
+    [data-theme="amber"] {
+      --primary: #ffb000;
+      --primary-dim: #b37b00;
+      --primary-glow: rgba(255, 176, 0, 0.45);
+      --primary-subtle: rgba(255, 176, 0, 0.08);
+      --bg-base: #080501;
+      --bg-surface: rgba(18, 11, 3, 0.88);
+      --bg-surface-hover: rgba(28, 17, 4, 0.95);
+      --bg-card: rgba(20, 13, 5, 0.75);
+      --border-color: rgba(255, 176, 0, 0.22);
+      --border-hover: rgba(255, 176, 0, 0.65);
+      --text-main: #fff5e0;
+      --text-muted: #b89868;
+      --text-dim: #8c6e43;
+    }
+
+    [data-theme="cyan"] {
+      --primary: #00f0ff;
+      --primary-dim: #009aa3;
+      --primary-glow: rgba(0, 240, 255, 0.45);
+      --primary-subtle: rgba(0, 240, 255, 0.08);
+      --bg-base: #010609;
+      --bg-surface: rgba(3, 14, 20, 0.88);
+      --bg-surface-hover: rgba(5, 23, 34, 0.95);
+      --bg-card: rgba(4, 18, 26, 0.75);
+      --border-color: rgba(0, 240, 255, 0.22);
+      --border-hover: rgba(0, 240, 255, 0.65);
+      --text-main: #e0faff;
+      --text-muted: #6b9ca4;
+      --text-dim: #43717a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    #matrix-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .crt-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%),
+                  linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 255, 0, 0.02));
+      background-size: 100% 3px, 6px 100%;
+      z-index: 1;
+      pointer-events: none;
+      opacity: var(--scanline-opacity);
+    }
+
+    .app-container {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      max-width: 1440px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 1rem 1.5rem;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand-logo svg {
+      width: 28px;
+      height: 28px;
+      stroke: var(--primary);
+    }
+
+    .brand-title {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--primary);
+      text-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    .brand-tag {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      background: var(--primary-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--primary);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .header-center {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
+      padding: 0.25rem 0.65rem;
+      border-radius: 20px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: background 0.3s;
+    }
+
+    .status-dot.healthy {
+      background: var(--primary);
+      box-shadow: 0 0 8px var(--primary);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.error {
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red);
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .nav-btn {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 0.35rem 0.7rem;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .nav-btn:hover {
+      color: var(--text-main);
+      border-color: var(--border-color);
+      background: var(--primary-subtle);
+    }
+
+    .nav-btn.primary {
+      color: var(--primary);
+      border-color: var(--border-color);
+    }
+
+    .nav-btn.primary:hover {
+      border-color: var(--border-hover);
+      box-shadow: 0 0 10px var(--primary-subtle);
+    }
+
+    /* Main Grid Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1.25rem;
+      flex: 1;
+      min-height: 0;
+    }
+
+    @media (max-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left: Chat & Investigation Workspace */
+    .chat-workspace {
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .workspace-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .workspace-title-row {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .workspace-title {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .workspace-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .action-icon-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      transition: all 0.2s;
+    }
+
+    .action-icon-btn:hover {
+      color: var(--primary);
+      border-color: var(--border-hover);
+      background: var(--primary-subtle);
+    }
+
+    /* Messages Stream */
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      min-height: 380px;
+      max-height: calc(100vh - 350px);
+      scroll-behavior: smooth;
+    }
+
+    .message {
+      display: flex;
+      gap: 0.85rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+      max-width: 82%;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      max-width: 95%;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
+    .avatar.assistant {
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(14, 165, 233, 0.4);
+      color: #38bdf8;
+    }
+
+    .avatar.user {
+      background: var(--primary-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--primary);
+    }
+
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .message-sender {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    .message.user .message-sender {
+      text-align: right;
+    }
+
+    .message-bubble {
+      padding: 0.85rem 1.15rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .message.user .message-bubble {
+      background: var(--primary-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-top-right-radius: 2px;
+    }
+
+    .message.assistant .message-bubble {
+      background: rgba(8, 20, 12, 0.85);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-top-left-radius: 2px;
+    }
+
+    /* Markdown inside messages */
+    .message-bubble h1, .message-bubble h2, .message-bubble h3, .message-bubble h4 {
+      font-family: var(--font-mono);
+      color: var(--primary);
+      margin: 0.75rem 0 0.4rem 0;
+    }
+    .message-bubble h1 { font-size: 1.25rem; }
+    .message-bubble h2 { font-size: 1.1rem; }
+    .message-bubble h3 { font-size: 1rem; }
+    .message-bubble h4 { font-size: 0.95rem; }
+
+    .message-bubble p {
+      margin-bottom: 0.6rem;
+    }
+    .message-bubble p:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-bubble ul, .message-bubble ol {
+      margin: 0.4rem 0 0.6rem 1.5rem;
+    }
+
+    .message-bubble li {
+      margin-bottom: 0.25rem;
+    }
+
+    .message-bubble pre {
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      overflow-x: auto;
+      margin: 0.6rem 0;
+      color: #93c5fd;
+      position: relative;
+    }
+
+    .message-bubble code {
+      font-family: var(--font-mono);
+      font-size: 0.84em;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.15rem 0.35rem;
+      border-radius: 4px;
+      color: var(--primary);
+      border: 1px solid rgba(0, 255, 102, 0.15);
+    }
+
+    .message-bubble pre code {
+      background: transparent;
+      padding: 0;
+      border: none;
+      color: inherit;
+    }
+
+    .message-bubble blockquote {
+      border-left: 3px solid var(--primary);
+      padding-left: 0.85rem;
+      color: var(--text-muted);
+      margin: 0.5rem 0;
+      font-style: italic;
+    }
+
+    .message-bubble table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.6rem 0;
+      font-size: 0.84rem;
+    }
+
+    .message-bubble th, .message-bubble td {
+      border: 1px solid var(--border-color);
+      padding: 0.45rem 0.75rem;
+      text-align: left;
+    }
+
+    .message-bubble th {
+      background: rgba(0, 255, 102, 0.08);
+      color: var(--primary);
+      font-family: var(--font-mono);
+    }
+
+    /* Quick Action Chips */
+    .quick-actions-bar {
+      padding: 0.75rem 1.25rem;
+      border-top: 1px solid var(--border-color);
+      background: rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .quick-actions-title {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+    }
+
+    .quick-chips-scroll {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+    }
+
+    .quick-chip {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 0.78rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .quick-chip:hover {
+      border-color: var(--border-hover);
+      color: var(--primary);
+      background: var(--primary-subtle);
+      transform: translateY(-1px);
+    }
+
+    /* Chat Input Bar */
+    .chat-input-bar {
+      padding: 0.85rem 1.25rem;
+      border-top: 1px solid var(--border-color);
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      position: relative;
+    }
+
+    .chat-textarea {
+      width: 100%;
+      background: rgba(3, 8, 4, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      padding: 0.75rem 1rem;
+      resize: none;
+      min-height: 44px;
+      max-height: 120px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .chat-textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px var(--primary-subtle);
+    }
+
+    .chat-send-btn {
+      background: var(--primary);
+      color: #030804;
+      border: none;
+      font-family: var(--font-mono);
+      font-weight: bold;
+      font-size: 0.85rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      height: 44px;
+      flex-shrink: 0;
+    }
+
+    .chat-send-btn:hover:not(:disabled) {
+      background: #33ff85;
+      box-shadow: 0 0 15px var(--primary-glow);
+      transform: translateY(-1px);
+    }
+
+    .chat-send-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* Right Sidebar */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .sidebar-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.25rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .sidebar-title {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.82rem;
+    }
+
+    .stat-row:last-child {
+      border-bottom: none;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      color: var(--text-main);
+      font-size: 0.8rem;
+    }
+
+    .tool-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      margin-top: 0.5rem;
+    }
+
+    .tool-item {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.5rem 0.65rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .tool-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .tool-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tool-name {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .tool-desc {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .tool-status {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 6px var(--primary);
+    }
+
+    .code-snippet-box {
+      position: relative;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.65rem 0.85rem;
+      margin-top: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: #93c5fd;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .copy-button {
+      position: absolute;
+      top: 0.4rem;
+      right: 0.4rem;
+      background: rgba(0, 255, 102, 0.15);
+      border: 1px solid var(--border-color);
+      color: var(--primary);
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-button:hover {
+      background: var(--primary);
+      color: #000;
+    }
+
+    /* Thinking spinner */
+    .thinking-box {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      padding: 0.5rem 0;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 1.25rem;
+      padding: 0.75rem 1.25rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .theme-cycle-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--primary);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrix-canvas"></canvas>
+  <div class="crt-overlay"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header>
+      <div class="header-left">
+        <a href="/" class="brand-logo" title="Return to Platform Hub">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <circle cx="12" cy="11" r="3"></circle>
+          </svg>
+          <span class="brand-title">MEZMO AURA</span>
+        </a>
+        <span class="brand-tag">SRE AI AGENT</span>
+      </div>
+
+      <div class="header-center">
+        <div class="status-pill">
+          <span class="status-dot" id="status-indicator"></span>
+          <span id="status-text">CONNECTING...</span>
+        </div>
+        <div class="status-pill" style="display:none;" id="model-pill">
+          <span style="color:var(--text-dim)">MODEL:</span>
+          <span id="model-text" style="color:var(--primary);font-weight:600;">aura-sre-model</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <a href="/" class="nav-btn primary">
+          &larr; Platform Hub
+        </a>
+        <a href="/grafana/" target="_blank" class="nav-btn">Grafana</a>
+        <a href="/vlogs/select/vmui/" target="_blank" class="nav-btn">VictoriaLogs</a>
+        <a href="/vmetrics/select/vmui/" target="_blank" class="nav-btn">VictoriaMetrics</a>
+        <a href="/vtraces/select/vmui/" target="_blank" class="nav-btn">VictoriaTraces</a>
+        <a href="/litellm/ui/" target="_blank" class="nav-btn">LiteLLM</a>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-grid">
+      <!-- Chat & Interactive Investigation Workspace -->
+      <section class="chat-workspace">
+        <div class="workspace-header">
+          <div class="workspace-title-row">
+            <span class="workspace-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4 17 10 11 4 5"></polyline>
+                <line x1="12" y1="19" x2="20" y2="19"></line>
+              </svg>
+              Autonomous SRE Investigation Console
+            </span>
+          </div>
+          <div class="workspace-actions">
+            <button class="action-icon-btn" onclick="clearMessages()" title="Clear conversation history">Clear Console</button>
+          </div>
+        </div>
+
+        <!-- Message Feed -->
+        <div class="messages-container" id="messages-feed">
+          <!-- Initial Welcome Message -->
+          <div class="message assistant">
+            <div class="avatar assistant">AI</div>
+            <div class="message-content">
+              <span class="message-sender">Mezmo AURA SRE Orchestrator &bull; Live Gateway</span>
+              <div class="message-bubble">
+                <p><strong>System Online &amp; Autonomous Telemetry Connected.</strong></p>
+                <p>I am your multi-agent <strong>Site Reliability Engineering (SRE)</strong> partner. I am connected directly to your observability stack via <strong>LiteLLM</strong> and <strong>216 live Model Context Protocol (MCP)</strong> tools.</p>
+                <ul>
+                  <li><strong>Metrics Analyst</strong>: PromQL telemetry queries against <code>VictoriaMetrics</code>.</li>
+                  <li><strong>Log Analyst</strong>: LogSQL pattern search &amp; error clustering in <code>VictoriaLogs</code>.</li>
+                  <li><strong>Trace Analyst</strong>: Distributed span and latency inspection in <code>VictoriaTraces</code>.</li>
+                  <li><strong>Incident Responder</strong>: Grafana alert rules, firing states, and dashboards.</li>
+                </ul>
+                <p style="margin-top:0.5rem;color:var(--text-muted);font-size:0.85rem;">Click one of the quick investigation prompts below or type your custom incident query.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Action Chips -->
+        <div class="quick-actions-bar">
+          <span class="quick-actions-title">1-Click SRE Automated Investigations</span>
+          <div class="quick-chips-scroll">
+            <button class="quick-chip" onclick="sendQuickPrompt('Analyze recent error logs and container restarts across the entire stack using VictoriaLogs.')">
+              🔍 Container Log Triage
+            </button>
+            <button class="quick-chip" onclick="sendQuickPrompt('Query VictoriaMetrics for host and container CPU and memory utilization, and report any resource bottlenecks.')">
+              📈 CPU &amp; RAM Anomalies
+            </button>
+            <button class="quick-chip" onclick="sendQuickPrompt('Inspect VictoriaTraces for slowest distributed spans and trace latency bottlenecks.')">
+              ⚡ Distributed Trace Latency
+            </button>
+            <button class="quick-chip" onclick="sendQuickPrompt('Check Grafana alert rules, active firing alerts, and provisioned datasource health.')">
+              🚨 Grafana Alerts Audit
+            </button>
+            <button class="quick-chip" onclick="sendQuickPrompt('Perform a comprehensive cross-domain observability health check across metrics, logs, and distributed traces.')">
+              🛡️ Full SRE System Audit
+            </button>
+          </div>
+        </div>
+
+        <!-- Input Bar -->
+        <div class="chat-input-bar">
+          <div class="input-wrapper">
+            <textarea
+              id="prompt-input"
+              class="chat-textarea"
+              placeholder="Ask AURA to investigate an incident, query metrics, or search error logs... (Press Enter to send, Shift+Enter for newline)"
+              rows="1"
+            ></textarea>
+          </div>
+          <button id="send-btn" class="chat-send-btn" onclick="submitMessage()">
+            <span>Investigate</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <!-- Telemetry Status Card -->
+        <div class="sidebar-card">
+          <div class="sidebar-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <activity><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></activity>
+            </svg>
+            Live Agent Telemetry
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Agent State</span>
+            <span class="stat-value" id="side-status" style="color:var(--primary)">CHECKING...</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">AURA Version</span>
+            <span class="stat-value" id="side-version">0.2.17</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Session Store</span>
+            <span class="stat-value" id="side-store">memory</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Upstream MCP Gateway</span>
+            <span class="stat-value">LiteLLM :4000</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Health Latency</span>
+            <span class="stat-value" id="side-latency">-- ms</span>
+          </div>
+        </div>
+
+        <!-- MCP Tool Integrations Card -->
+        <div class="sidebar-card">
+          <div class="sidebar-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+            Active MCP Specialist Workers
+          </div>
+          <div class="tool-list">
+            <div class="tool-item">
+              <span class="tool-status"></span>
+              <div class="tool-info">
+                <span class="tool-name">metrics-analyst</span>
+                <span class="tool-desc">VictoriaMetrics &bull; PromQL instant/range</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-status"></span>
+              <div class="tool-info">
+                <span class="tool-name">log-analyst</span>
+                <span class="tool-desc">VictoriaLogs &bull; LogSQL pattern search</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-status"></span>
+              <div class="tool-info">
+                <span class="tool-name">trace-analyst</span>
+                <span class="tool-desc">VictoriaTraces &bull; eBPF Beyla spans</span>
+              </div>
+            </div>
+            <div class="tool-item">
+              <span class="tool-status"></span>
+              <div class="tool-info">
+                <span class="tool-name">incident-responder</span>
+                <span class="tool-desc">Grafana MCP &bull; Alerts &amp; Dashboards</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CLI & API Quick Access -->
+        <div class="sidebar-card">
+          <div class="sidebar-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" y1="19" x2="20" y2="19"></line>
+            </svg>
+            Terminal REPL Client
+          </div>
+          <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.4rem;">
+            Run live investigation directly in your bash shell:
+          </p>
+          <div class="code-snippet-box">
+            <button class="copy-button" onclick="copyText('docker exec -it aura ./aura')">Copy</button>
+            <code>docker exec -it aura ./aura</code>
+          </div>
+
+          <p style="font-size:0.75rem;color:var(--text-muted);margin:0.8rem 0 0.4rem 0;">
+            REST API (OpenAI-compatible):
+          </p>
+          <div class="code-snippet-box">
+            <button class="copy-button" onclick="copyText(`curl -s -u admin:*** -X POST https://${window.location.host}/aura/v1/chat/completions -H 'Content-Type: application/json' -d '{\x22messages\x22:[{\x22role\x22:\x22user\x22,\x22content\x22:\x22status\x22}]}'`)">Copy</button>
+            <code>curl -s -u admin:*** \
+  -X POST https://neoson-o11y.duckdns.org/aura/v1/chat/completions \
+  -d '{"messages":[{"role":"user","content":"Check CPU"}]}'</code>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <div>
+        <span>MEZMO AURA SRE &bull; AUTONOMOUS TELEMETRY &bull; 216 LIVE MCP TOOLS</span>
+      </div>
+      <div>
+        <button class="theme-cycle-btn" onclick="cycleTheme()">Theme: Cycle Matrix</button>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // State
+    let conversationHistory = [];
+    let isProcessing = false;
+    const themes = ['matrix', 'amber', 'cyan'];
+    let currentThemeIdx = 0;
+
+    // Elements
+    const statusIndicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+    const modelPill = document.getElementById('model-pill');
+    const modelText = document.getElementById('model-text');
+    const messagesFeed = document.getElementById('messages-feed');
+    const promptInput = document.getElementById('prompt-input');
+    const sendBtn = document.getElementById('send-btn');
+    const sideStatus = document.getElementById('side-status');
+    const sideVersion = document.getElementById('side-version');
+    const sideStore = document.getElementById('side-store');
+    const sideLatency = document.getElementById('side-latency');
+
+    // Matrix Rain Animation
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン'.split('');
+    const fontSize = 14;
+    let columns = Math.floor(width / fontSize);
+    let drops = Array(columns).fill(1);
+
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(3, 8, 4, 0.08)';
+      ctx.fillRect(0, 0, width, height);
+
+      const theme = document.documentElement.getAttribute('data-theme');
+      let charColor = '#00ff66';
+      if (theme === 'amber') charColor = '#ffb000';
+      if (theme === 'cyan') charColor = '#00f0ff';
+
+      ctx.fillStyle = charColor;
+      ctx.font = fontSize + 'px monospace';
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = chars[Math.floor(Math.random() * chars.length)];
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+
+    let rainInterval = setInterval(drawMatrix, 70);
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      columns = Math.floor(width / fontSize);
+      drops = Array(columns).fill(1);
+    });
+
+    // Theme Management
+    function cycleTheme() {
+      currentThemeIdx = (currentThemeIdx + 1) % themes.length;
+      const theme = themes[currentThemeIdx];
+      if (theme === 'matrix') {
+        document.documentElement.removeAttribute('data-theme');
+      } else {
+        document.documentElement.setAttribute('data-theme', theme);
+      }
+    }
+
+    // Copy Helper
+    function copyText(str) {
+      navigator.clipboard.writeText(str).then(() => {
+        alert('Copied snippet to clipboard!');
+      });
+    }
+
+    // Markdown Parser
+    function parseMarkdown(md) {
+      if (!md) return '';
+      let html = md
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Code blocks
+      html = html.replace(/```([a-z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        return `<pre><code>${code.trim()}</code></pre>`;
+      });
+
+      // Inline code
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+      // Headers
+      html = html.replace(/^### (.*$)/gim, '<h4>$1</h4>');
+      html = html.replace(/^## (.*$)/gim, '<h3>$1</h3>');
+      html = html.replace(/^# (.*$)/gim, '<h2>$1</h2>');
+
+      // Bold & Italic
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+      // Unordered lists
+      html = html.replace(/^\s*[-*]\s+(.*)$/gim, '<li>$1</li>');
+      html = html.replace(/(<li>.*<\/li>)/gms, '<ul>$1</ul>');
+      html = html.replace(/<\/ul>\s*<ul>/g, '');
+
+      // Line breaks
+      html = html.replace(/\n\n/g, '</p><p>');
+      html = '<p>' + html + '</p>';
+      html = html.replace(/<p><\/p>/g, '');
+      html = html.replace(/<p>(<h[2-4]>.*?<\/h[2-4]>)<\/p>/g, '$1');
+      html = html.replace(/<p>(<pre>.*?<\/pre>)<\/p>/gs, '$1');
+      html = html.replace(/<p>(<ul>.*?<\/ul>)<\/p>/gs, '$1');
+
+      return html;
+    }
+
+    // Check Health & Model
+    async function checkHealth() {
+      const startTime = performance.now();
+      try {
+        const res = await fetch('/aura/health');
+        const latency = Math.round(performance.now() - startTime);
+        if (res.ok) {
+          const data = await res.json();
+          statusIndicator.className = 'status-dot healthy';
+          statusText.textContent = 'ONLINE (200)';
+          sideStatus.textContent = data.status.toUpperCase();
+          sideStatus.style.color = 'var(--primary)';
+          if (data.aura_version) sideVersion.textContent = 'v' + data.aura_version;
+          if (data.session_store && data.session_store.backend) sideStore.textContent = data.session_store.backend;
+          sideLatency.textContent = latency + ' ms';
+        } else {
+          statusIndicator.className = 'status-dot error';
+          statusText.textContent = `HTTP ${res.status}`;
+          sideStatus.textContent = 'DEGRADED';
+          sideStatus.style.color = 'var(--red)';
+        }
+      } catch (err) {
+        statusIndicator.className = 'status-dot error';
+        statusText.textContent = 'OFFLINE';
+        sideStatus.textContent = 'UNREACHABLE';
+        sideStatus.style.color = 'var(--red)';
+      }
+
+      // Query Models
+      try {
+        const modelRes = await fetch('/aura/v1/models');
+        if (modelRes.ok) {
+          const mData = await modelRes.json();
+          if (mData.data && mData.data.length > 0) {
+            modelText.textContent = mData.data[0].id;
+            modelPill.style.display = 'flex';
+          }
+        }
+      } catch (e) {
+        // ignore model fetch failure
+      }
+    }
+
+    // Append Message
+    function appendMessage(role, text, isThinking = false) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${role}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = `avatar ${role}`;
+      avatar.textContent = role === 'assistant' ? 'AI' : 'YOU';
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+
+      const senderSpan = document.createElement('span');
+      senderSpan.className = 'message-sender';
+      senderSpan.textContent = role === 'assistant' ? 'Mezmo AURA SRE Orchestrator' : 'Operator';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble';
+
+      if (isThinking) {
+        bubble.id = 'active-thinking-bubble';
+        bubble.innerHTML = `
+          <div class="thinking-box">
+            <div class="spinner"></div>
+            <span>Orchestrating multi-agent investigation across VictoriaMetrics, Logs, Traces &amp; Grafana...</span>
+          </div>
+        `;
+      } else {
+        bubble.innerHTML = role === 'assistant' ? parseMarkdown(text) : text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      contentDiv.appendChild(senderSpan);
+      contentDiv.appendChild(bubble);
+      msgDiv.appendChild(avatar);
+      msgDiv.appendChild(contentDiv);
+
+      messagesFeed.appendChild(msgDiv);
+      messagesFeed.scrollTop = messagesFeed.scrollHeight;
+
+      return bubble;
+    }
+
+    // Quick Prompt Helper
+    function sendQuickPrompt(promptText) {
+      if (isProcessing) return;
+      promptInput.value = promptText;
+      submitMessage();
+    }
+
+    // Submit Message
+    async function submitMessage() {
+      const text = promptInput.value.trim();
+      if (!text || isProcessing) return;
+
+      isProcessing = true;
+      sendBtn.disabled = true;
+      promptInput.value = '';
+
+      // Append User message
+      appendMessage('user', text);
+      conversationHistory.push({ role: 'user', content: text });
+
+      // Append Thinking bubble
+      const thinkingBubble = appendMessage('assistant', '', true);
+
+      try {
+        const response = await fetch('/aura/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messages: conversationHistory
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          thinkingBubble.innerHTML = `<p style="color:var(--red);"><strong>Error:</strong> HTTP ${response.status} - ${errText || response.statusText}</p>`;
+        } else {
+          const data = await response.json();
+          const assistantReply = (data.choices && data.choices[0] && data.choices[0].message) 
+            ? data.choices[0].message.content 
+            : 'No response content returned by AURA.';
+
+          thinkingBubble.innerHTML = parseMarkdown(assistantReply);
+          conversationHistory.push({ role: 'assistant', content: assistantReply });
+        }
+      } catch (err) {
+        thinkingBubble.innerHTML = `<p style="color:var(--red);"><strong>Network Connection Failure:</strong> ${err.message}</p>`;
+      } finally {
+        isProcessing = false;
+        sendBtn.disabled = false;
+        messagesFeed.scrollTop = messagesFeed.scrollHeight;
+      }
+    }
+
+    function clearMessages() {
+      conversationHistory = [];
+      messagesFeed.innerHTML = `
+        <div class="message assistant">
+          <div class="avatar assistant">AI</div>
+          <div class="message-content">
+            <span class="message-sender">Mezmo AURA SRE Orchestrator &bull; Live Gateway</span>
+            <div class="message-bubble">
+              <p><strong>Console cleared.</strong> Ready for new incident investigation or telemetry queries.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Auto-resize textarea & keyboard shortcuts
+    promptInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitMessage();
+      }
+    });
+
+    // Initialize
+    checkHealth();
+    setInterval(checkHealth, 15000);
+  </script>
+</body>
+</html>
