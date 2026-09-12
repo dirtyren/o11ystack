@@ -48,6 +48,7 @@ flowchart TD
         ProcExp["Process Exporter (:9256)"]
         Beyla["Grafana Beyla (eBPF Zero-Code Tracer)"]
         OTelCol["OpenTelemetry Collector Contrib (:4317/:4318)"]
+        Vector["Vector Docker Log Collector (:8686)"]
     end
 
     subgraph VictoriaStorage["Victoria Observability (1 Year Retention)"]
@@ -93,6 +94,7 @@ flowchart TD
     OTelCol -->|"Prometheus Remote Write"| VMetrics
     OTelCol -->|"OTLP HTTP Logs"| VLogs
     OTelCol -->|"OTLP gRPC Spans"| VTraces
+    Vector -->|"Docker Container Logs (/insert/jsonline)"| VLogs
 
     %% Database backing & caching
     MySQL --> Grafana
@@ -151,6 +153,7 @@ flowchart TD
 | **Node Exporter** | `prom/node-exporter:latest` | `9100/tcp` | Host `/proc`, `/sys`, `/` | Server hardware telemetry (CPU, RAM, Disks, Networks). |
 | **Process Exporter** | `ncabatoff/process-exporter:latest` | `9256/tcp` | Host `/proc`, `pid: host` | Per-process CPU, memory, IO, and fd consumption. |
 | **OTel Collector** | `otel/opentelemetry-collector-contrib:latest` | `4317/tcp`, `4318/tcp` | Host `/var/log` | Pipelines server metrics, logs, and distributed traces into Victoria databases. |
+| **Vector** | `timberio/vector:latest-alpine` | `8686/tcp` | `vector-data` volume | High-performance log collector streaming all Docker Compose container stdout/stderr into VictoriaLogs. |
 | **Grafana Beyla** | `grafana/beyla:latest` | Host eBPF Probes | Linux Kernel | Zero-code, automatic eBPF tracing of all processes (HTTP/gRPC/SQL). |
 | **Nginx** | `nginx:alpine` | `80/tcp`, `443/tcp` | SSL Certs + `.htpasswd` | Reverse proxy with default SSL, prefix routing, and Basic Auth protection. |
 
@@ -652,8 +655,8 @@ The OpenTelemetry Collector (`otel-collector`) runs with three pipelines:
      - `victoriatraces:10428` (VictoriaTraces internal metrics)
    - **Exporter**: `prometheusremotewrite` exports all metrics directly to `http://victoriametrics:8428/api/v1/write`.
 2. **Logs Pipeline**:
-   - **Receivers**: `filelog` receiver tails `/var/log/**/*.log`, `/var/log/syslog`, and `/var/log/messages`.
-   - **Exporter**: `otlphttp/logs` ships logs formatted to VictoriaLogs at `http://victorialogs:9428/insert/opentelemetry/v1/logs`.
+   - **Docker Container Logs**: **Vector** captures stdout/stderr streams from all Docker Compose containers in real time via `/var/run/docker.sock` and `/var/lib/docker/containers`, automatically parses JSON messages, tags records with `container_name`, `compose_service`, and `stream`, and ships them to VictoriaLogs at `http://victorialogs:9428/insert/jsonline`.
+   - **System & Host Logs**: `filelog` receiver in OpenTelemetry Collector tails `/var/log/**/*.log`, `/var/log/syslog`, and `/var/log/messages`, shipping via `otlphttp/logs` to `http://victorialogs:9428/insert/opentelemetry/v1/logs`.
 3. **Traces Pipeline**:
    - **Receivers**: `otlp` gRPC/HTTP receiver on ports `4317` and `4318`.
    - **Source**: **Grafana Beyla** attaches eBPF kernel probes across all running host processes without requiring code modification, streaming trace spans into the collector.
@@ -675,9 +678,11 @@ curl -k -s -o /dev/null -w "%{http_code}\n" https://localhost/
 curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
   "https://localhost/vmetrics/api/v1/label/__name__/values" | grep -E "node_|vm_app_version"
 
-# 3. Check Server Logs Ingestion in VictoriaLogs
+# 3. Check Logs Ingestion in VictoriaLogs (Docker Container Logs & Host Logs)
 curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
   "https://localhost/vlogs/select/logsql/hits?query=*&step=1d"
+curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \
+  "https://localhost/vlogs/select/logsql/query?query=container_name:*&limit=5" | jq .
 
 # 4. Check eBPF Process Traces in VictoriaTraces
 curl -k -s -u "${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}" \

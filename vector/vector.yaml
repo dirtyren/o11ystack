@@ -1,0 +1,64 @@
+# ==============================================================================
+# Vector Configuration - Docker Container Logs Collector to VictoriaLogs
+# ==============================================================================
+
+data_dir: /var/lib/vector/
+
+api:
+  enabled: true
+  address: 0.0.0.0:8686
+
+sources:
+  docker_logs:
+    type: docker_logs
+    auto_partial_merge: true
+    exclude_containers:
+      - vector
+
+  vector_metrics:
+    type: internal_metrics
+
+transforms:
+  process_docker_logs:
+    type: remap
+    inputs:
+      - docker_logs
+    source: |
+      # Normalize container name (strip leading slash, e.g. /nginx -> nginx)
+      .container_name = replace(string!(.container_name), r'^/', "")
+      
+      # Extract Docker Compose service and project metadata
+      if exists(.label."com.docker.compose.service") {
+        .compose_service = string!(.label."com.docker.compose.service")
+      } else {
+        .compose_service = .container_name
+      }
+
+      if exists(.label."com.docker.compose.project") {
+        .compose_project = string!(.label."com.docker.compose.project")
+      }
+
+      # Drop verbose internal labels to keep log documents lightweight
+      del(.label)
+
+sinks:
+  victorialogs:
+    type: http
+    inputs:
+      - process_docker_logs
+    uri: "http://victorialogs:9428/insert/jsonline?_time_field=timestamp&_msg_field=message&_stream_fields=container_name,compose_service,stream"
+    encoding:
+      codec: json
+    framing:
+      method: newline_delimited
+    compression: gzip
+    healthcheck:
+      enabled: false
+
+  victoriametrics:
+    type: prometheus_remote_write
+    inputs:
+      - vector_metrics
+    endpoint: "http://victoriametrics:8428/api/v1/write"
+    healthcheck:
+      enabled: false

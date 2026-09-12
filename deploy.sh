@@ -314,8 +314,8 @@ deploy_stack() {
     log_info "Starting Docker Compose services..."
     cd "${STACK_DIR}"
 
-    # Start core databases and Victorias first
-    docker compose up -d mysql postgres redis victoriametrics victorialogs victoriatraces node-exporter process-exporter otel-collector beyla
+    # Start core databases, Victorias, and Vector log collector
+    docker compose up -d mysql postgres redis victoriametrics victorialogs victoriatraces node-exporter process-exporter otel-collector beyla vector
 
     log_info "Starting Grafana and waiting for database migrations..."
     docker compose up -d grafana
@@ -370,6 +370,7 @@ show_summary() {
     echo -e "  * VictoriaLogs MCP:        ${CYAN}http://mcp-victorialogs:8081/sse${NC}"
     echo -e "  * VictoriaTraces MCP:      ${CYAN}http://mcp-victoriatraces:8082/sse${NC}"
     echo -e "  * Grafana MCP (Admin):     ${CYAN}http://mcp-grafana:8000/sse${NC}"
+    echo -e "  * Container Logs (Vector): ${GREEN}Active${NC} (streaming all container logs to VictoriaLogs)"
 
     echo -e "\n${BOLD}Credentials Summary:${NC}"
     echo -e "  * Basic Auth (V-Suite & AURA): User: ${GREEN}${BASIC_AUTH_USER}${NC} | Pass: ${GREEN}${BASIC_AUTH_PASSWORD}${NC}"
