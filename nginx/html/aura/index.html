@@ -1034,20 +1034,20 @@
         <div class="quick-actions-bar">
           <span class="quick-actions-title">1-Click SRE Automated Investigations</span>
           <div class="quick-chips-scroll">
-            <button class="quick-chip" onclick="sendQuickPrompt('Analyze recent error logs and container restarts across the entire stack using VictoriaLogs.')">
-              🔍 Container Log Triage
+            <button class="quick-chip" onclick="sendQuickPrompt('Analyze error logs and container restarts across the entire stack over the last 5 minutes using VictoriaLogs.')">
+              🔍 Log Triage (Last 5m)
             </button>
-            <button class="quick-chip" onclick="sendQuickPrompt('Query VictoriaMetrics for host and container CPU and memory utilization, and report any resource bottlenecks.')">
-              📈 CPU &amp; RAM Anomalies
+            <button class="quick-chip" onclick="sendQuickPrompt('Query VictoriaMetrics for host and container CPU and memory utilization over the last 5 minutes, and report any resource bottlenecks.')">
+              📈 CPU &amp; RAM (Last 5m)
             </button>
-            <button class="quick-chip" onclick="sendQuickPrompt('Inspect VictoriaTraces for slowest distributed spans and trace latency bottlenecks.')">
-              ⚡ Distributed Trace Latency
+            <button class="quick-chip" onclick="sendQuickPrompt('Inspect VictoriaTraces for slowest distributed spans and trace latency bottlenecks over the last 5 minutes.')">
+              ⚡ Trace Latency (Last 5m)
             </button>
-            <button class="quick-chip" onclick="sendQuickPrompt('Check Grafana alert rules, active firing alerts, and provisioned datasource health.')">
-              🚨 Grafana Alerts Audit
+            <button class="quick-chip" onclick="sendQuickPrompt('Check Grafana alert rules, active firing alerts, and provisioned datasource health in the last 5 minutes.')">
+              🚨 Firing Alerts (Last 5m)
             </button>
-            <button class="quick-chip" onclick="sendQuickPrompt('Perform a comprehensive cross-domain observability health check across metrics, logs, and distributed traces.')">
-              🛡️ Full SRE System Audit
+            <button class="quick-chip" onclick="sendQuickPrompt('Perform a comprehensive cross-domain observability health check across metrics, logs, and distributed traces over the last 5 minutes.')">
+              🛡️ Full SRE Audit (Last 5m)
             </button>
           </div>
         </div>
@@ -1058,7 +1058,7 @@
             <textarea
               id="prompt-input"
               class="chat-textarea"
-              placeholder="Ask AURA to investigate an incident, query metrics, or search error logs... (Press Enter to send, Shift+Enter for newline)"
+              placeholder="Ask AURA to investigate an incident (defaults to last 5 minutes of telemetry unless specified)..."
               rows="1"
             ></textarea>
           </div>
