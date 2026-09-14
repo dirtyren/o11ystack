@@ -96,6 +96,105 @@
       --card-shadow-hover: 0 12px 24px -4px rgba(15, 23, 42, 0.12), 0 0 0 1px var(--border-focus);
     }
 
+    /* Matrix Cyberpunk Theme */
+    [data-theme="matrix"] {
+      --bg-body: #030804;
+      --bg-surface: rgba(6, 16, 9, 0.9);
+      --bg-surface-elevated: #0a1f10;
+      --bg-surface-glass: rgba(6, 16, 9, 0.85);
+      --bg-surface-subtle: #0d2815;
+      
+      --border-base: rgba(0, 255, 102, 0.22);
+      --border-focus: #00ff66;
+      --border-subtle: rgba(0, 255, 102, 0.12);
+
+      --text-main: #e2fced;
+      --text-muted: #7ca88b;
+      --text-dim: #4d7a5d;
+      
+      --primary: #00ff66;
+      --primary-hover: #00cc52;
+      --primary-subtle: rgba(0, 255, 102, 0.14);
+      --primary-glow: rgba(0, 255, 102, 0.45);
+
+      --cyan: #00f0ff;
+      --cyan-subtle: rgba(0, 240, 255, 0.12);
+      --emerald: #00ff66;
+      --emerald-subtle: rgba(0, 255, 102, 0.15);
+      --amber: #ffb000;
+      --amber-subtle: rgba(255, 176, 0, 0.12);
+      --violet: #a855f7;
+      --violet-subtle: rgba(168, 85, 247, 0.12);
+
+      --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-subtle);
+      --card-shadow-hover: 0 12px 30px -4px rgba(0, 0, 0, 0.95), 0 0 16px var(--primary-glow), 0 0 0 1px var(--border-focus);
+    }
+
+    [data-theme="matrix"] .btn-primary {
+      color: #030804;
+      font-weight: 700;
+    }
+
+    [data-theme="matrix"] .brand-icon {
+      background: linear-gradient(135deg, #00ff66, #00993d);
+      color: #030804;
+      box-shadow: 0 0 16px rgba(0, 255, 102, 0.5);
+    }
+
+    [data-theme="matrix"] .hero-title .gradient-text {
+      background: linear-gradient(135deg, #ffffff 20%, #00ff66 70%, #00f0ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    [data-theme="matrix"] .ambient-glow {
+      background: radial-gradient(circle at 50% 20%, rgba(0, 255, 102, 0.35) 0%, rgba(0, 255, 102, 0.08) 45%, transparent 70%);
+      opacity: 0.5;
+    }
+
+    [data-theme="matrix"] .terminal-card {
+      background: #020603;
+      border-color: rgba(0, 255, 102, 0.25);
+    }
+
+    [data-theme="matrix"] .terminal-header {
+      background: #051208;
+      border-color: rgba(0, 255, 102, 0.2);
+    }
+
+    /* Matrix Digital Rain Canvas & CRT Overlay */
+    #matrix-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      opacity: 0.36;
+      pointer-events: none;
+      display: none;
+    }
+
+    .crt-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                  linear-gradient(90deg, rgba(0, 255, 102, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 255, 102, 0.02));
+      background-size: 100% 3px, 6px 100%;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.15;
+      display: none;
+    }
+
+    [data-theme="matrix"] #matrix-canvas,
+    [data-theme="matrix"] .crt-overlay {
+      display: block;
+    }
+
     /* -------------------------------------------------------------
        GLOBAL RESET & BASE STYLES
        ------------------------------------------------------------- */
@@ -240,6 +339,17 @@
       background: var(--bg-surface);
       color: var(--text-main);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    #btn-matrix:hover, [data-theme="matrix"] #btn-matrix.active {
+      color: #00ff66;
+    }
+
+    [data-theme="matrix"] .theme-btn.active {
+      background: rgba(0, 255, 102, 0.15);
+      color: #00ff66;
+      border: 1px solid rgba(0, 255, 102, 0.3);
+      box-shadow: 0 0 10px rgba(0, 255, 102, 0.2);
     }
 
     .btn {
@@ -936,6 +1046,10 @@
   <!-- Ambient backdrop glow -->
   <div class="ambient-glow"></div>
 
+  <!-- Matrix Digital Rain Canvas & CRT Overlay (active when Matrix theme is selected) -->
+  <canvas id="matrix-canvas"></canvas>
+  <div class="crt-overlay"></div>
+
   <!-- Header / Navigation Bar -->
   <header class="navbar">
     <div class="container nav-inner">
@@ -956,10 +1070,14 @@
 
       <div class="nav-actions">
         <div class="theme-select-wrapper">
-          <button class="theme-btn active" id="btn-dark" onclick="setTheme('dark')" title="Midnight Slate Dark">Dark</button>
+          <button class="theme-btn active" id="btn-dark" onclick="setTheme('dark')" title="Midnight Slate Dark (Professional Default)">Dark</button>
           <button class="theme-btn" id="btn-ocean" onclick="setTheme('ocean')" title="Deep Blue Ocean">Blue</button>
           <button class="theme-btn" id="btn-light" onclick="setTheme('light')" title="Minimal Light">Light</button>
+          <button class="theme-btn" id="btn-matrix" onclick="setTheme('matrix')" title="Matrix Cyberpunk Green">Matrix</button>
         </div>
+        <a href="/index.html" class="btn btn-secondary btn-sm" title="Launch Classic Matrix Terminal Portal">
+          Matrix Portal
+        </a>
         <a href="/grafana/" class="btn btn-primary btn-sm">
           <svg class="icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Grafana
@@ -1661,6 +1779,7 @@
         <p style="margin-top:0.25rem">Integrated VictoriaMetrics, VictoriaLogs, VictoriaTraces, Grafana, LiteLLM &amp; Mezmo AURA.</p>
       </div>
       <div class="footer-links">
+        <a href="/index.html">Matrix Portal</a>
         <a href="/grafana/">Grafana</a>
         <a href="/vmetrics/vmui/">VictoriaMetrics</a>
         <a href="/vlogs/select/vmui/">VictoriaLogs</a>
@@ -1673,17 +1792,115 @@
 
   <!-- Script for Theme Toggle, Tab Filters, and Snippet Copy -->
   <script>
+    let rainRunning = false;
+    let animationFrameId = null;
+    let canvas = null;
+    let ctx = null;
+    let columns = 0;
+    let drops = [];
+    const chars = '0123456789ABCDEF01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンNEO_SON*+-<>|=';
+    const charArray = chars.split('');
+    const fontSize = 15;
+    let lastTime = 0;
+    const dropInterval = 70; // cinematic rain speed
+
+    function initMatrixCanvas() {
+      canvas = document.getElementById('matrix-canvas');
+      if (!canvas) return;
+      ctx = canvas.getContext('2d');
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+    }
+
+    function resizeCanvas() {
+      if (!canvas) return;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      columns = Math.floor(canvas.width / fontSize);
+      drops = [];
+      for (let i = 0; i < columns; i++) {
+        drops[i] = Math.floor(Math.random() * -100);
+      }
+    }
+
+    function drawMatrix(currentTime) {
+      if (!rainRunning || !canvas || !ctx) return;
+      animationFrameId = requestAnimationFrame(drawMatrix);
+
+      if (!currentTime) currentTime = performance.now();
+      const delta = currentTime - lastTime;
+      if (delta < dropInterval) return;
+      lastTime = currentTime - (delta % dropInterval);
+
+      ctx.fillStyle = 'rgba(3, 8, 4, 0.14)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.font = fontSize + 'px ' + (getComputedStyle(document.documentElement).getPropertyValue('--font-mono') || 'monospace');
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = charArray[Math.floor(Math.random() * charArray.length)];
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+
+        // Head of drop is bright white/light tint
+        ctx.fillStyle = '#d4ffea';
+        ctx.fillText(text, x, y);
+
+        // Body of trail is matrix accent
+        ctx.fillStyle = '#00ff66';
+        ctx.fillText(text, x, y - fontSize);
+
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+
+    function startRain() {
+      if (rainRunning) return;
+      rainRunning = true;
+      if (!canvas) initMatrixCanvas();
+      resizeCanvas();
+      drawMatrix();
+    }
+
+    function stopRain() {
+      if (!rainRunning) return;
+      rainRunning = false;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      if (canvas && ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
     function setTheme(theme) {
+      const validThemes = ['dark', 'ocean', 'light', 'matrix'];
+      if (!validThemes.includes(theme)) theme = 'dark';
+
       document.documentElement.setAttribute('data-theme', theme);
       localStorage.setItem('o11y_theme', theme);
       
       document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
       const activeBtn = document.getElementById('btn-' + theme);
       if (activeBtn) activeBtn.classList.add('active');
+
+      if (theme === 'matrix') {
+        startRain();
+      } else {
+        stopRain();
+      }
     }
 
-    // Load saved theme or default to dark
-    const savedTheme = localStorage.getItem('o11y_theme') || 'dark';
+    // Load saved theme or default to professional dark
+    const validThemes = ['dark', 'ocean', 'light', 'matrix'];
+    let savedTheme = localStorage.getItem('o11y_theme');
+    if (!savedTheme || !validThemes.includes(savedTheme)) {
+      savedTheme = 'dark'; // Professional dark theme is default
+    }
     setTheme(savedTheme);
 
     function filterCards(category, btnElement) {
