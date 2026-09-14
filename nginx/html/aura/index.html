@@ -1166,8 +1166,8 @@
             REST API (OpenAI-compatible):
           </p>
           <div class="code-snippet-box">
-            <button class="copy-button" onclick="copyText(`curl -s -u admin:*** -X POST https://${window.location.host}/aura/v1/chat/completions -H 'Content-Type: application/json' -d '{\x22messages\x22:[{\x22role\x22:\x22user\x22,\x22content\x22:\x22status\x22}]}'`)">Copy</button>
-            <code>curl -s -u admin:*** \
+            <button class="copy-button" onclick="copyText(`curl -s -u admin:<BASIC_AUTH_PASSWORD> -X POST https://${window.location.host}/aura/v1/chat/completions -H 'Content-Type: application/json' -d '{\x22messages\x22:[{\x22role\x22:\x22user\x22,\x22content\x22:\x22status\x22}]}'`)">Copy</button>
+            <code>curl -s -u admin:&lt;BASIC_AUTH_PASSWORD&gt; \
   -X POST https://neoson-o11y.duckdns.org/aura/v1/chat/completions \
   -d '{"messages":[{"role":"user","content":"Check CPU"}]}'</code>
           </div>

@@ -959,14 +959,14 @@
         <h3>2. Quick Testing &amp; Diagnostic Commands</h3>
         <p>Test VictoriaMetrics Instant Query:</p>
         <div class="code-box">
-          <pre>curl -k -u admin:admin https://localhost/vmetrics/api/v1/query?query=up</pre>
-          <button class="copy-btn" onclick="copySnippet('curl -k -u admin:admin https://localhost/vmetrics/api/v1/query?query=up')">Copy</button>
+          <pre>curl -k -u admin:&lt;BASIC_AUTH_PASSWORD&gt; https://localhost/vmetrics/api/v1/query?query=up</pre>
+          <button class="copy-btn" onclick="copySnippet('curl -k -u admin:<BASIC_AUTH_PASSWORD> https://localhost/vmetrics/api/v1/query?query=up')">Copy</button>
         </div>
 
         <p>Test VictoriaLogs LogSQL Search:</p>
         <div class="code-box">
-          <pre>curl -k -u admin:admin -G 'https://localhost/vlogs/select/logsql/query' --data-urlencode 'query=*'</pre>
-          <button class="copy-btn" onclick="copySnippet('curl -k -u admin:admin -G \'https://localhost/vlogs/select/logsql/query\' --data-urlencode \'query=*\'')">Copy</button>
+          <pre>curl -k -u admin:&lt;BASIC_AUTH_PASSWORD&gt; -G 'https://localhost/vlogs/select/logsql/query' --data-urlencode 'query=*'</pre>
+          <button class="copy-btn" onclick="copySnippet('curl -k -u admin:<BASIC_AUTH_PASSWORD> -G \'https://localhost/vlogs/select/logsql/query\' --data-urlencode \'query=*\'')">Copy</button>
         </div>
 
         <p>Query LiteLLM Models &amp; Health:</p>
@@ -977,8 +977,8 @@
 
         <p>Query Mezmo AURA Health Endpoint:</p>
         <div class="code-box">
-          <pre>curl -k -u admin:admin https://localhost/aura/health</pre>
-          <button class="copy-btn" onclick="copySnippet('curl -k -u admin:admin https://localhost/aura/health')">Copy</button>
+          <pre>curl -k -u admin:&lt;BASIC_AUTH_PASSWORD&gt; https://localhost/aura/health</pre>
+          <button class="copy-btn" onclick="copySnippet('curl -k -u admin:<BASIC_AUTH_PASSWORD> https://localhost/aura/health')">Copy</button>
         </div>
 
         <h3>3. Keyboard Shortcuts</h3>
