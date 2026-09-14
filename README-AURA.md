@@ -96,6 +96,17 @@ flowchart TD
 4. **`incident-responder`**:
    - Inspects Grafana active alert rules, incident status, provisioned datasources, and dashboard panels.
 
+### Telemetry Time Window Policy (5-Minute Default)
+
+To prevent context overflows, reduce TSDB load, and focus immediately on active incidents, AURA enforces a strict **last 5 minutes (`5m`)** default lookback window across all telemetry domains:
+- **VictoriaMetrics**: PromQL rates and range queries default to `[5m]` (`start=now-5m`).
+- **VictoriaLogs**: LogSQL filters default to `_time:5m`.
+- **VictoriaTraces**: Trace queries default to `lookback: 300000` ms (5m) and `limit: 20`.
+- **Grafana Alerts**: Inspection is scoped to firing alerts and state transitions in the last 5 minutes.
+
+> [!NOTE]
+> **Custom Time Window Overrides**: To investigate an earlier outage or broader historical trend, simply specify the timeframe in your query (e.g., *"Diagnose elevated latency over the past 2 hours"* or *"Check CPU spikes between 14:00 and 16:00"*). AURA will honor your explicit timeframe and override the 5-minute default.
+
 ---
 
 ## How to Access and Interact with AURA
