@@ -1716,7 +1716,7 @@
               <button class="copy-btn" onclick="copySnippet(this, 'code-aura')">Copy</button>
             </div>
             <pre id="code-aura">curl -s -X POST https://neoson-o11y.duckdns.org/aura/v1/chat/completions \
-  -u "admin:243o4ln4pLEFDnFn5FJU" \
+  -u "admin:&lt;BASIC_AUTH_PASSWORD&gt;" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "aura-sre-model",
@@ -1736,7 +1736,7 @@
               <span>Query VictoriaLogs with LogsQL</span>
               <button class="copy-btn" onclick="copySnippet(this, 'code-vlogs')">Copy</button>
             </div>
-            <pre id="code-vlogs">curl -s -u "admin:243o4ln4pLEFDnFn5FJU" \
+            <pre id="code-vlogs">curl -s -u "admin:&lt;BASIC_AUTH_PASSWORD&gt;" \
   "https://neoson-o11y.duckdns.org/vlogs/select/logsql/query" \
   -d 'query=_time:5m AND level:error'</pre>
           </div>
@@ -1747,7 +1747,7 @@
               <span>Query VictoriaMetrics with PromQL</span>
               <button class="copy-btn" onclick="copySnippet(this, 'code-vmetrics')">Copy</button>
             </div>
-            <pre id="code-vmetrics">curl -s -u "admin:243o4ln4pLEFDnFn5FJU" \
+            <pre id="code-vmetrics">curl -s -u "admin:&lt;BASIC_AUTH_PASSWORD&gt;" \
   "https://neoson-o11y.duckdns.org/vmetrics/api/v1/query" \
   -d 'query=sum(rate(node_cpu_seconds_total{mode="idle"}[5m]))'</pre>
           </div>
@@ -1759,7 +1759,7 @@
               <button class="copy-btn" onclick="copySnippet(this, 'code-litellm')">Copy</button>
             </div>
             <pre id="code-litellm">curl -s -X POST https://neoson-o11y.duckdns.org/litellm/v1/chat/completions \
-  -H "Authorization: Bearer sk-ElUHuO63KrplqdqhQJNsFL5hK4e1N5xI" \
+  -H "Authorization: Bearer &lt;LITELLM_MASTER_KEY&gt;" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "openrouter-llama-70b",
