@@ -1,20 +1,115 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mezmo AURA // Autonomous SRE AI Agent Console</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5' fill='%23050a06' stroke='%2300ff66' stroke-width='4'/%3E%3Cpath d='M25 45 C25 40, 42 35, 48 45 C48 55, 30 55, 25 45 Z' fill='%2300ff66'/%3E%3Cpath d='M75 45 C75 40, 58 35, 52 45 C52 55, 70 55, 75 45 Z' fill='%2300ff66'/%3E%3Cline x1='48' y1='44' x2='52' y2='44' stroke='%2300ff66' stroke-width='3'/%3E%3Ctext x='50' y='76' fill='%2300ff66' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3EAURA%3C/text%3E%3C/svg%3E">
+  <script>
+    (function() {
+      const valid = ['dark', 'ocean', 'light', 'matrix'];
+      const saved = localStorage.getItem('o11y_theme');
+      if (saved && valid.includes(saved)) {
+        document.documentElement.setAttribute('data-theme', saved);
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <style>
     :root {
       --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
       --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       
-      /* Default: Matrix Green */
+      /* Base Dark Theme (Midnight Slate - Default Professional) */
+      --primary: #3b82f6;
+      --primary-dim: #2563eb;
+      --primary-glow: rgba(59, 130, 246, 0.35);
+      --primary-subtle: rgba(59, 130, 246, 0.12);
+      --bg-base: #080c14;
+      --bg-surface: #0f172a;
+      --bg-surface-hover: #15203b;
+      --bg-card: #15203b;
+      --border-color: #1e293b;
+      --border-hover: #3b82f6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --scanline-opacity: 0.15;
+      --cyan: #38bdf8;
+      --amber: #f59e0b;
+      --violet: #8b5cf6;
+      --red: #f43f5e;
+    }
+
+    [data-theme="dark"] {
+      --primary: #3b82f6;
+      --primary-dim: #2563eb;
+      --primary-glow: rgba(59, 130, 246, 0.35);
+      --primary-subtle: rgba(59, 130, 246, 0.12);
+      --bg-base: #080c14;
+      --bg-surface: #0f172a;
+      --bg-surface-hover: #15203b;
+      --bg-card: #15203b;
+      --border-color: #1e293b;
+      --border-hover: #3b82f6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --scanline-opacity: 0.15;
+      --cyan: #38bdf8;
+      --amber: #f59e0b;
+      --violet: #8b5cf6;
+      --red: #f43f5e;
+    }
+
+    [data-theme="ocean"] {
+      --primary: #2563eb;
+      --primary-dim: #1d4ed8;
+      --primary-glow: rgba(37, 99, 235, 0.45);
+      --primary-subtle: rgba(37, 99, 235, 0.18);
+      --bg-base: #040d1a;
+      --bg-surface: #0a192f;
+      --bg-surface-hover: #0f2747;
+      --bg-card: #0f2747;
+      --border-color: #1b3a6b;
+      --border-hover: #60a5fa;
+      --text-main: #f0fdfa;
+      --text-muted: #8ec5fc;
+      --text-dim: #5c8bb8;
+      --scanline-opacity: 0.15;
+      --cyan: #38bdf8;
+      --amber: #f59e0b;
+      --violet: #8b5cf6;
+      --red: #f43f5e;
+    }
+
+    [data-theme="light"] {
+      --primary: #2563eb;
+      --primary-dim: #1d4ed8;
+      --primary-glow: rgba(37, 99, 235, 0.2);
+      --primary-subtle: rgba(37, 99, 235, 0.08);
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-surface-hover: #f1f5f9;
+      --bg-card: #ffffff;
+      --border-color: #e2e8f0;
+      --border-hover: #2563eb;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --scanline-opacity: 0.04;
+      --cyan: #0284c7;
+      --amber: #d97706;
+      --violet: #7c3aed;
+      --red: #e11d48;
+    }
+
+    [data-theme="matrix"] {
       --primary: #00ff66;
       --primary-dim: #00993d;
       --primary-glow: rgba(0, 255, 102, 0.45);
-      --primary-subtle: rgba(0, 255, 102, 0.08);
+      --primary-subtle: rgba(0, 255, 102, 0.12);
       --bg-base: #030804;
       --bg-surface: rgba(6, 16, 9, 0.88);
       --bg-surface-hover: rgba(10, 26, 15, 0.95);
@@ -24,43 +119,11 @@
       --text-main: #e2fced;
       --text-muted: #7ca88b;
       --text-dim: #4d7a5d;
-      --scanline-opacity: 0.15;
+      --scanline-opacity: 0.18;
       --cyan: #00f0ff;
       --amber: #ffb000;
       --violet: #c084fc;
       --red: #f43f5e;
-    }
-
-    [data-theme="amber"] {
-      --primary: #ffb000;
-      --primary-dim: #b37b00;
-      --primary-glow: rgba(255, 176, 0, 0.45);
-      --primary-subtle: rgba(255, 176, 0, 0.08);
-      --bg-base: #080501;
-      --bg-surface: rgba(18, 11, 3, 0.88);
-      --bg-surface-hover: rgba(28, 17, 4, 0.95);
-      --bg-card: rgba(20, 13, 5, 0.75);
-      --border-color: rgba(255, 176, 0, 0.22);
-      --border-hover: rgba(255, 176, 0, 0.65);
-      --text-main: #fff5e0;
-      --text-muted: #b89868;
-      --text-dim: #8c6e43;
-    }
-
-    [data-theme="cyan"] {
-      --primary: #00f0ff;
-      --primary-dim: #009aa3;
-      --primary-glow: rgba(0, 240, 255, 0.45);
-      --primary-subtle: rgba(0, 240, 255, 0.08);
-      --bg-base: #010609;
-      --bg-surface: rgba(3, 14, 20, 0.88);
-      --bg-surface-hover: rgba(5, 23, 34, 0.95);
-      --bg-card: rgba(4, 18, 26, 0.75);
-      --border-color: rgba(0, 240, 255, 0.22);
-      --border-hover: rgba(0, 240, 255, 0.65);
-      --text-main: #e0faff;
-      --text-muted: #6b9ca4;
-      --text-dim: #43717a;
     }
 
     * {
@@ -89,6 +152,7 @@
       z-index: 0;
       opacity: 0.45;
       pointer-events: none;
+      display: none;
     }
 
     .crt-overlay {
@@ -98,11 +162,17 @@
       width: 100vw;
       height: 100vh;
       background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%),
-                  linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 255, 0, 0.02));
+                  linear-gradient(90deg, rgba(0, 255, 102, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 255, 102, 0.02));
       background-size: 100% 3px, 6px 100%;
       z-index: 1;
       pointer-events: none;
       opacity: var(--scanline-opacity);
+      display: none;
+    }
+
+    [data-theme="matrix"] #matrix-canvas,
+    [data-theme="matrix"] .crt-overlay {
+      display: block;
     }
 
     .app-container {
@@ -184,7 +254,7 @@
       gap: 0.4rem;
       font-family: var(--font-mono);
       font-size: 0.75rem;
-      background: rgba(0, 0, 0, 0.4);
+      background: var(--bg-card);
       border: 1px solid var(--border-color);
       padding: 0.25rem 0.65rem;
       border-radius: 20px;
@@ -284,7 +354,7 @@
       justify-content: space-between;
       padding: 0.85rem 1.25rem;
       border-bottom: 1px solid var(--border-color);
-      background: rgba(0, 0, 0, 0.3);
+      background: var(--bg-surface-hover);
     }
 
     .workspace-title-row {
@@ -418,7 +488,7 @@
     }
 
     .message.assistant .message-bubble {
-      background: rgba(8, 20, 12, 0.85);
+      background: var(--bg-card);
       border: 1px solid var(--border-color);
       color: var(--text-main);
       border-top-left-radius: 2px;
@@ -451,7 +521,7 @@
     }
 
     .message-bubble pre {
-      background: rgba(0, 0, 0, 0.6);
+      background: var(--bg-base);
       border: 1px solid var(--border-color);
       border-radius: 6px;
       padding: 0.75rem 1rem;
@@ -459,18 +529,18 @@
       font-size: 0.82rem;
       overflow-x: auto;
       margin: 0.6rem 0;
-      color: #93c5fd;
+      color: var(--cyan);
       position: relative;
     }
 
     .message-bubble code {
       font-family: var(--font-mono);
       font-size: 0.84em;
-      background: rgba(0, 0, 0, 0.4);
+      background: var(--primary-subtle);
       padding: 0.15rem 0.35rem;
       border-radius: 4px;
       color: var(--primary);
-      border: 1px solid rgba(0, 255, 102, 0.15);
+      border: 1px solid var(--border-color);
     }
 
     .message-bubble pre code {
@@ -502,7 +572,7 @@
     }
 
     .message-bubble th {
-      background: rgba(0, 255, 102, 0.08);
+      background: var(--primary-subtle);
       color: var(--primary);
       font-family: var(--font-mono);
     }
@@ -511,7 +581,7 @@
     .quick-actions-bar {
       padding: 0.75rem 1.25rem;
       border-top: 1px solid var(--border-color);
-      background: rgba(0, 0, 0, 0.2);
+      background: var(--bg-surface-hover);
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
@@ -559,7 +629,7 @@
     .chat-input-bar {
       padding: 0.85rem 1.25rem;
       border-top: 1px solid var(--border-color);
-      background: rgba(0, 0, 0, 0.4);
+      background: var(--bg-surface);
       display: flex;
       gap: 0.75rem;
       align-items: flex-end;
@@ -572,7 +642,7 @@
 
     .chat-textarea {
       width: 100%;
-      background: rgba(3, 8, 4, 0.9);
+      background: var(--bg-base);
       border: 1px solid var(--border-color);
       border-radius: 6px;
       color: var(--text-main);
@@ -593,7 +663,7 @@
 
     .chat-send-btn {
       background: var(--primary);
-      color: #030804;
+      color: #ffffff;
       border: none;
       font-family: var(--font-mono);
       font-weight: bold;
@@ -610,9 +680,17 @@
     }
 
     .chat-send-btn:hover:not(:disabled) {
-      background: #33ff85;
+      background: var(--primary-dim);
       box-shadow: 0 0 15px var(--primary-glow);
       transform: translateY(-1px);
+    }
+
+    [data-theme="matrix"] .chat-send-btn {
+      color: #030804;
+    }
+
+    [data-theme="matrix"] .chat-send-btn:hover:not(:disabled) {
+      background: #33ff85;
     }
 
     .chat-send-btn:disabled {
@@ -724,14 +802,14 @@
 
     .code-snippet-box {
       position: relative;
-      background: rgba(0, 0, 0, 0.6);
+      background: var(--bg-base);
       border: 1px solid var(--border-color);
       border-radius: 6px;
       padding: 0.65rem 0.85rem;
       margin-top: 0.5rem;
       font-family: var(--font-mono);
       font-size: 0.75rem;
-      color: #93c5fd;
+      color: var(--cyan);
       overflow-x: auto;
       white-space: pre-wrap;
       word-break: break-all;
@@ -741,7 +819,7 @@
       position: absolute;
       top: 0.4rem;
       right: 0.4rem;
-      background: rgba(0, 255, 102, 0.15);
+      background: var(--primary-subtle);
       border: 1px solid var(--border-color);
       color: var(--primary);
       font-family: var(--font-mono);
@@ -755,6 +833,54 @@
     .copy-button:hover {
       background: var(--primary);
       color: #000;
+    }
+
+    /* Theme Select Group */
+    .theme-select-wrapper {
+      display: flex;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .theme-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.25rem 0.55rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.15s ease;
+    }
+
+    .theme-btn:hover {
+      color: var(--text-main);
+    }
+
+    .theme-btn.active {
+      background: var(--bg-surface-hover);
+      color: var(--primary);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+
+    #btn-matrix:hover, [data-theme="matrix"] #btn-matrix.active {
+      color: #00ff66;
+    }
+
+    [data-theme="matrix"] .theme-btn.active {
+      background: rgba(0, 255, 102, 0.15);
+      color: #00ff66;
+      border-color: rgba(0, 255, 102, 0.35);
+      box-shadow: 0 0 8px rgba(0, 255, 102, 0.25);
     }
 
     /* Thinking spinner */
@@ -799,14 +925,20 @@
     }
 
     .theme-cycle-btn {
-      background: transparent;
+      background: var(--bg-card);
       border: 1px solid var(--border-color);
       color: var(--primary);
       font-family: var(--font-mono);
       font-size: 0.72rem;
-      padding: 0.2rem 0.5rem;
+      padding: 0.25rem 0.6rem;
       border-radius: 4px;
       cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .theme-cycle-btn:hover {
+      background: var(--primary-subtle);
+      border-color: var(--border-hover);
     }
   </style>
 </head>
@@ -840,6 +972,12 @@
       </div>
 
       <div class="header-right">
+        <div class="theme-select-wrapper">
+          <button class="theme-btn active" id="btn-dark" onclick="setTheme('dark')" title="Midnight Slate Dark (Professional Default)">Dark</button>
+          <button class="theme-btn" id="btn-ocean" onclick="setTheme('ocean')" title="Deep Blue Ocean">Blue</button>
+          <button class="theme-btn" id="btn-light" onclick="setTheme('light')" title="Minimal Light">Light</button>
+          <button class="theme-btn" id="btn-matrix" onclick="setTheme('matrix')" title="Matrix Cyberpunk">Matrix</button>
+        </div>
         <a href="/" class="nav-btn primary">
           &larr; Platform Hub
         </a>
@@ -1043,7 +1181,7 @@
         <span>MEZMO AURA SRE &bull; AUTONOMOUS TELEMETRY &bull; 216 LIVE MCP TOOLS</span>
       </div>
       <div>
-        <button class="theme-cycle-btn" onclick="cycleTheme()">Theme: Cycle Matrix</button>
+        <button class="theme-cycle-btn" id="footer-theme-btn" onclick="cycleTheme()">Theme: DARK</button>
       </div>
     </footer>
   </div>
@@ -1052,8 +1190,7 @@
     // State
     let conversationHistory = [];
     let isProcessing = false;
-    const themes = ['matrix', 'amber', 'cyan'];
-    let currentThemeIdx = 0;
+    const themes = ['dark', 'ocean', 'light', 'matrix'];
 
     // Elements
     const statusIndicator = document.getElementById('status-indicator');
@@ -1070,24 +1207,21 @@
 
     // Matrix Rain Animation
     const canvas = document.getElementById('matrix-canvas');
-    const ctx = canvas.getContext('2d');
-    let width = canvas.width = window.innerWidth;
-    let height = canvas.height = window.innerHeight;
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    let width = canvas ? (canvas.width = window.innerWidth) : 0;
+    let height = canvas ? (canvas.height = window.innerHeight) : 0;
     const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン'.split('');
     const fontSize = 14;
     let columns = Math.floor(width / fontSize);
     let drops = Array(columns).fill(1);
+    let rainInterval = null;
 
     function drawMatrix() {
+      if (!ctx || !canvas) return;
       ctx.fillStyle = 'rgba(3, 8, 4, 0.08)';
       ctx.fillRect(0, 0, width, height);
 
-      const theme = document.documentElement.getAttribute('data-theme');
-      let charColor = '#00ff66';
-      if (theme === 'amber') charColor = '#ffb000';
-      if (theme === 'cyan') charColor = '#00f0ff';
-
-      ctx.fillStyle = charColor;
+      ctx.fillStyle = '#00ff66';
       ctx.font = fontSize + 'px monospace';
 
       for (let i = 0; i < drops.length; i++) {
@@ -1100,24 +1234,75 @@
       }
     }
 
-    let rainInterval = setInterval(drawMatrix, 70);
+    function startRain() {
+      if (rainInterval) return;
+      if (canvas && ctx) {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        columns = Math.floor(width / fontSize);
+        drops = Array(columns).fill(1);
+        rainInterval = setInterval(drawMatrix, 70);
+      }
+    }
+
+    function stopRain() {
+      if (rainInterval) {
+        clearInterval(rainInterval);
+        rainInterval = null;
+      }
+      if (canvas && ctx) {
+        ctx.clearRect(0, 0, width, height);
+      }
+    }
+
     window.addEventListener('resize', () => {
+      if (!canvas) return;
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
       columns = Math.floor(width / fontSize);
       drops = Array(columns).fill(1);
     });
 
-    // Theme Management
-    function cycleTheme() {
-      currentThemeIdx = (currentThemeIdx + 1) % themes.length;
-      const theme = themes[currentThemeIdx];
+    // Theme Management - Synced with landing.html and localStorage ('o11y_theme')
+    function setTheme(theme) {
+      if (!themes.includes(theme)) theme = 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('o11y_theme', theme);
+
+      document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById('btn-' + theme);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const footerBtn = document.getElementById('footer-theme-btn');
+      if (footerBtn) {
+        footerBtn.textContent = 'Theme: ' + theme.toUpperCase();
+      }
+
       if (theme === 'matrix') {
-        document.documentElement.removeAttribute('data-theme');
+        startRain();
       } else {
-        document.documentElement.setAttribute('data-theme', theme);
+        stopRain();
       }
     }
+
+    function cycleTheme() {
+      const currentTheme = localStorage.getItem('o11y_theme') || 'dark';
+      let idx = themes.indexOf(currentTheme);
+      if (idx === -1) idx = 0;
+      const nextTheme = themes[(idx + 1) % themes.length];
+      setTheme(nextTheme);
+    }
+
+    // Load initial theme from localStorage (matches landing.html)
+    const initialTheme = localStorage.getItem('o11y_theme') || 'dark';
+    setTheme(initialTheme);
+
+    // Sync theme live across browser tabs/windows
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'o11y_theme' && e.newValue) {
+        setTheme(e.newValue);
+      }
+    });
 
     // Copy Helper
     function copyText(str) {
