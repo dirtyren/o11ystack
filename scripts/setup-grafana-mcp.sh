@@ -56,7 +56,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     fi
 
     # Option C: via Docker internal network
-    if docker run --rm --network o11ystack_o11y-net curlimages/curl:latest -s -f -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" "http://grafana:3000/grafana/api/health" >/dev/null 2>&1; then
+    if docker run --rm --network o11ystack_o11y-net curlimages/curl:8.22.0 -s -f -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" "http://grafana:3000/grafana/api/health" >/dev/null 2>&1; then
         API_BASE="docker_net"
         echo "==> Grafana is reachable inside Docker network!"
         break
@@ -74,7 +74,7 @@ fi
 
 echo "==> Checking if Service Account 'mcp-grafana' exists..."
 if [ "$API_BASE" = "docker_net" ]; then
-    SA_SEARCH=$(docker run --rm --network o11ystack_o11y-net curlimages/curl:latest -s \
+    SA_SEARCH=$(docker run --rm --network o11ystack_o11y-net curlimages/curl:8.22.0 -s \
         -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
         "http://grafana:3000/grafana/api/serviceaccounts/search?query=mcp-grafana" || echo '{"serviceAccounts":[]}')
 else
@@ -96,7 +96,7 @@ except Exception:
 if [ -z "$SA_ID" ]; then
     echo "==> Creating Service Account 'mcp-grafana' with role Admin (all permissions)..."
     if [ "$API_BASE" = "docker_net" ]; then
-        CREATE_RESP=$(docker run --rm --network o11ystack_o11y-net curlimages/curl:latest -s -X POST \
+        CREATE_RESP=$(docker run --rm --network o11ystack_o11y-net curlimages/curl:8.22.0 -s -X POST \
             -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
             -H "Content-Type: application/json" \
             -d '{"name":"mcp-grafana","role":"Admin"}' \
@@ -110,7 +110,7 @@ else
     echo "    Service Account 'mcp-grafana' already exists with ID: $SA_ID"
     # Ensure Admin role
     if [ "$API_BASE" = "docker_net" ]; then
-        docker run --rm --network o11ystack_o11y-net curlimages/curl:latest -s -X PATCH \
+        docker run --rm --network o11ystack_o11y-net curlimages/curl:8.22.0 -s -X PATCH \
             -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
             -H "Content-Type: application/json" \
             -d '{"role":"Admin"}' \
@@ -128,7 +128,7 @@ fi
 echo "==> Generating Service Account Token with full Admin permissions for Grafana MCP Server..."
 TOKEN_NAME="mcp-token-$(date +%s)"
 if [ "$API_BASE" = "docker_net" ]; then
-    TOKEN_RESP=$(docker run --rm --network o11ystack_o11y-net curlimages/curl:latest -s -X POST \
+    TOKEN_RESP=$(docker run --rm --network o11ystack_o11y-net curlimages/curl:8.22.0 -s -X POST \
         -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
         -H "Content-Type: application/json" \
         -d "{\"name\":\"${TOKEN_NAME}\"}" \

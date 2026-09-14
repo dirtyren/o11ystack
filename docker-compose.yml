@@ -3,7 +3,7 @@ services:
   # Victoria Observability Stack (Logs, Metrics, Traces)
   # ==========================================
   victorialogs:
-    image: victoriametrics/victoria-logs:latest
+    image: victoriametrics/victoria-logs:v1.52.0
     container_name: victorialogs
     restart: unless-stopped
     command:
@@ -16,7 +16,7 @@ services:
       - o11y-net
 
   victoriametrics:
-    image: victoriametrics/victoria-metrics:latest
+    image: victoriametrics/victoria-metrics:v1.152.0
     container_name: victoriametrics
     restart: unless-stopped
     command:
@@ -29,7 +29,7 @@ services:
       - o11y-net
 
   victoriatraces:
-    image: victoriametrics/victoria-traces:latest
+    image: victoriametrics/victoria-traces:v0.11.0
     container_name: victoriatraces
     restart: unless-stopped
     command:
@@ -47,7 +47,7 @@ services:
   # Grafana with MySQL Backend
   # ==========================================
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.46
     container_name: mysql
     restart: unless-stopped
     environment:
@@ -67,7 +67,7 @@ services:
       start_period: 15s
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.2.1
     container_name: grafana
     restart: unless-stopped
     depends_on:
@@ -101,7 +101,7 @@ services:
   # LiteLLM Proxy with PostgreSQL Backend
   # ==========================================
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine
     container_name: postgres
     restart: unless-stopped
     environment:
@@ -123,7 +123,7 @@ services:
   # Redis In-Memory Cache for LiteLLM
   # ==========================================
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.11-alpine
     container_name: redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-changeme_redis}"]
@@ -141,7 +141,7 @@ services:
       start_period: 5s
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-latest
+    image: ghcr.io/berriai/litellm:v1.100.1
     container_name: litellm
     restart: unless-stopped
     depends_on:
@@ -180,14 +180,14 @@ services:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:4000/health/readiness')\" || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 6
-      start_period: 20s
+      retries: 8
+      start_period: 60s
 
   # ==========================================
   # Mezmo AURA SRE AI Agent
   # ==========================================
   aura:
-    image: mezmo/aura:latest
+    image: mezmo/aura:0.2.17
     container_name: aura
     restart: unless-stopped
     command:
@@ -228,7 +228,7 @@ services:
   # Model Context Protocol (MCP) Servers
   # ==========================================
   mcp-victoriametrics:
-    image: ghcr.io/victoriametrics/mcp-victoriametrics:latest
+    image: ghcr.io/victoriametrics/mcp-victoriametrics:v1.20.2
     container_name: mcp-victoriametrics
     restart: unless-stopped
     environment:
@@ -242,7 +242,7 @@ services:
       - o11y-net
 
   mcp-victorialogs:
-    image: ghcr.io/victoriametrics/mcp-victorialogs:latest
+    image: ghcr.io/victoriametrics/mcp-victorialogs:v1.9.0
     container_name: mcp-victorialogs
     restart: unless-stopped
     environment:
@@ -255,7 +255,7 @@ services:
       - o11y-net
 
   mcp-victoriatraces:
-    image: ghcr.io/victoriametrics-community/mcp-victoriatraces:latest
+    image: ghcr.io/victoriametrics-community/mcp-victoriatraces:v1.5.0
     container_name: mcp-victoriatraces
     restart: unless-stopped
     environment:
@@ -268,7 +268,7 @@ services:
       - o11y-net
 
   mcp-grafana:
-    image: grafana/mcp-grafana:latest
+    image: grafana/mcp-grafana:1.4.1
     container_name: mcp-grafana
     restart: unless-stopped
     command: ["-t", "sse", "-address", "0.0.0.0:8000", "-allowed-hosts", "*"]
@@ -284,7 +284,7 @@ services:
   # Host Metrics, Process Exporter & eBPF Tracing
   # ==========================================
   node-exporter:
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.12.1
     container_name: node-exporter
     restart: unless-stopped
     pid: host
@@ -301,7 +301,7 @@ services:
       - o11y-net
 
   process-exporter:
-    image: ncabatoff/process-exporter:latest
+    image: ncabatoff/process-exporter:v0.8.7
     container_name: process-exporter
     restart: unless-stopped
     pid: host
@@ -335,7 +335,7 @@ services:
       - o11y-net
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.160.0
     container_name: otel-collector
     restart: unless-stopped
     user: "0:0"
@@ -351,7 +351,7 @@ services:
       - o11y-net
 
   beyla:
-    image: grafana/beyla:latest
+    image: grafana/beyla:3.35.0
     container_name: beyla
     restart: unless-stopped
     pid: host
@@ -370,7 +370,7 @@ services:
   # Vector Log Collector (Docker Logs -> VictoriaLogs)
   # ==========================================
   vector:
-    image: timberio/vector:latest-alpine
+    image: timberio/vector:0.58.0-alpine
     container_name: vector
     restart: unless-stopped
     user: "0:0"
@@ -389,7 +389,7 @@ services:
   # Nginx Reverse Proxy with SSL & Basic Auth
   # ==========================================
   nginx:
-    image: nginx:alpine
+    image: nginx:1.31.5-alpine
     container_name: nginx
     restart: unless-stopped
     ports:
@@ -414,7 +414,7 @@ services:
   # DuckDNS Dynamic DNS Updater
   # ==========================================
   duckdns:
-    image: lscr.io/linuxserver/duckdns:latest
+    image: lscr.io/linuxserver/duckdns:version-73f1bc7d
     container_name: duckdns
     restart: unless-stopped
     environment:
