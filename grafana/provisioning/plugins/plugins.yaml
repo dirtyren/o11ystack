@@ -1,0 +1,9 @@
+apiVersion: 1
+
+apps:
+  - type: mezmo-aura-app
+    disabled: false
+    jsonData:
+      apiUrl: ""
+      defaultLookback: "5m"
+      pollIntervalSec: 15
