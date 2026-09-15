@@ -85,12 +85,13 @@ services:
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_INSTALL_PLUGINS: "victoriametrics-logs-datasource"
-      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: "mezmo-aura-app"
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: "mezmo-aura-app,opensre-app"
       GF_DATAPROXY_TIMEOUT: "900"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/plugins/mezmo-aura-app/dist:/var/lib/grafana/plugins/mezmo-aura-app:ro
+      - ./grafana/plugins/opensre-app/dist:/var/lib/grafana/plugins/opensre-app:ro
     networks:
       - o11y-net
     healthcheck:
@@ -226,6 +227,44 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # ==========================================
+  # OpenSRE AI Agent (Tracer-Cloud)
+  # ==========================================
+  opensre:
+    build:
+      context: ./opensre
+      dockerfile: Dockerfile
+    container_name: opensre
+    restart: unless-stopped
+    environment:
+      PORT: "8000"
+      MODE: "web"
+      LLM_PROVIDER: "custom-openai"
+      CUSTOM_OPENAI_BASE_URL: "http://litellm:4000/v1"
+      CUSTOM_OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
+      CUSTOM_OPENAI_MODEL: ${AURA_MODEL:-aura-sre-model}
+      VICTORIALOGS_URL: "http://victorialogs:9428"
+      PROMETHEUS_URL: "http://victoriametrics:8428"
+      GRAFANA_INSTANCE_URL: "http://grafana:3000/grafana"
+      GRAFANA_READ_TOKEN: ${GRAFANA_SERVICE_ACCOUNT_TOKEN:-}
+    depends_on:
+      litellm:
+        condition: service_healthy
+      victoriametrics:
+        condition: service_started
+      victorialogs:
+        condition: service_started
+      grafana:
+        condition: service_started
+    networks:
+      - o11y-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # ==========================================
   # Model Context Protocol (MCP) Servers
@@ -411,6 +450,7 @@ services:
       - grafana
       - litellm
       - aura
+      - opensre
     networks:
       - o11y-net
   # ==========================================

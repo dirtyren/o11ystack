@@ -1441,6 +1441,39 @@
             </div>
           </div>
 
+          <!-- 6. OpenSRE AI Agent -->
+          <div class="software-card" data-category="ai">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#00D2FF">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="7"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="3" y1="12" x2="7" y2="12"/><line x1="17" y1="12" x2="21" y2="12"/></svg>
+                </div>
+                <div style="display:flex;gap:0.35rem;flex-wrap:wrap">
+                  <span class="auth-pill" style="background:rgba(0,210,255,0.15);color:#00D2FF">Grafana App</span>
+                  <span class="auth-pill basic">Basic Auth</span>
+                </div>
+              </div>
+              <h4 class="software-name">OpenSRE</h4>
+              <div class="software-tagline">Open Source AI SRE Agent</div>
+              <p class="software-desc">
+                Autonomous incident response and root-cause analysis agent connecting to VictoriaLogs, VictoriaMetrics, Grafana, and LiteLLM model routing (sharing aura-sre-model).
+              </p>
+              <ul class="spec-list">
+                <li>Native Grafana App: /grafana/a/opensre-app/console</li>
+                <li>Shared LiteLLM Model Hub &amp; Redis prompt cache</li>
+                <li>Port: :8000 (Internal) &bull; /opensre/v1/ (API)</li>
+                <li>Alert Webhook Intake: /opensre/alerts</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">Grafana / Basic Auth</span>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                <a href="/grafana/a/opensre-app/console" class="btn btn-primary btn-sm">Open in Grafana &rarr;</a>
+                <a href="/opensre/health" class="btn btn-secondary btn-sm">Health API &rarr;</a>
+              </div>
+            </div>
+          </div>
+
           <!-- 6. LiteLLM Proxy & MCP Gateway -->
           <div class="software-card" data-category="ai">
             <div>
