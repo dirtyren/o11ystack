@@ -10,6 +10,7 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   isError?: boolean;
+  elapsedMs?: number;
 }
 
 export interface AuraHealthResponse {
