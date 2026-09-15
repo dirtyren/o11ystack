@@ -13,3 +13,9 @@ nginx/certs/*.pem
 scratch/
 letsencrypt/
 **/node_modules/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.venv/

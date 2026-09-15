@@ -7,3 +7,9 @@ apps:
       apiUrl: ""
       defaultLookback: "5m"
       pollIntervalSec: 15
+  - type: opensre-app
+    disabled: false
+    jsonData:
+      apiUrl: ""
+      defaultLookback: "5m"
+      pollIntervalSec: 15

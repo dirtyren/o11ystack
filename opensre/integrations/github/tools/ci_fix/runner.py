@@ -1,0 +1,675 @@
+"""Lifecycle for fixing failing GitHub CI and pushing a repair or PR branch."""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Callable
+from contextlib import ExitStack
+from dataclasses import replace
+from typing import Any, Final
+
+from rich.markup import escape
+
+from integrations.coding_agent import (
+    CodingResult,
+    Progress,
+    coding_model,
+    coding_timeout_seconds,
+    coding_workspace,
+    run_coding_task,
+    verify_coding_agent,
+)
+from integrations.git import (
+    GitCommandError,
+    changed_paths,
+    committed_paths_since,
+    ensure_head_revision,
+    file_fingerprints,
+    head_sha,
+    merge_commit_edits,
+)
+from integrations.github.ci_epochs import publish_repair_epoch
+from integrations.github.client import resolve_github_token
+from integrations.github.repair_workspace import repair_workspace
+from integrations.github.tools.ci_fix.base_merge import (
+    BaseMergeResult,
+    base_has_new_commits,
+    merge_base_into_head,
+)
+from integrations.github.tools.ci_fix.context import (
+    CI_TARGET_BRANCH,
+    CiFixContext,
+    build_fix_task,
+    gather_branch_ci_fix_context,
+    gather_ci_fix_context,
+)
+from integrations.github.tools.ci_fix.errors import (
+    ERR_CHECKS_FAILED,
+    ERR_CHECKS_SUPERSEDED,
+    ERR_CHECKS_TIMEOUT,
+    ERR_CONFIRMATION_DENIED,
+    ERR_EXECUTION,
+    ERR_GITHUB_TOKEN,
+    ERR_INVALID_INPUT,
+    ERR_MERGE_CONFLICT,
+    ERR_NO_FAILING_CHECKS,
+    ERR_TIMEOUT,
+    GitHubCiFixError,
+)
+from integrations.github.tools.ci_fix.resume import resumed_push
+from integrations.github.tools.ci_fix.ship import PushResult, checkout_target_branch, push_ci_fix
+from integrations.github.tools.ci_fix.storage.attempts import record_verification, repair_key
+from integrations.github.tools.ci_fix.verification import (
+    DEFAULT_CHECK_WAIT_SECONDS,
+    CheckState,
+    CheckVerification,
+    wait_for_branch_checks,
+    wait_for_pr_checks,
+)
+from integrations.github.tools.ci_fix.worktree import (
+    BranchWorktree,
+    cleanup_branch_worktree,
+    create_branch_worktree,
+)
+
+SOURCE: Final = "github"
+_YES = {"y", "yes"}
+# Merge errors assert "no push was made"; after a fix push that clause is false.
+_NO_PUSH_TAIL_RE = re.compile(r"(?: and)? [Nn]o push was made\.?")
+
+
+def ensure_push_ready(github_token: str | None = None) -> None:
+    if not resolve_github_token(github_token):
+        raise GitHubCiFixError(
+            ERR_GITHUB_TOKEN,
+            "A GitHub token is required to push CI fixes; no push was made.",
+        )
+
+
+def pre_coding_changes(workspace: str) -> dict[str, str]:
+    """Fingerprint already-dirty files so pushing excludes untouched WIP."""
+    try:
+        return file_fingerprints(workspace, changed_paths(workspace))
+    except GitCommandError:
+        return {}
+
+
+def run_fix(ctx: CiFixContext, workspace: str, model: str | None) -> CodingResult:
+    return _run_coding(
+        ctx.task,
+        workspace,
+        model,
+        unavailable=(
+            f"Found failing CI checks on {ctx.target_label}, "
+            "but no configured coding agent is ready; no push was made."
+        ),
+    )
+
+
+def resolve_merge_conflicts(
+    ctx: CiFixContext, workspace: str, model: str | None
+) -> Callable[..., CodingResult]:
+    """Coding-agent runner for the conflicts of merging the base into the PR head."""
+
+    def resolve(task: str, *, on_progress: Progress | None = None) -> CodingResult:
+        return _run_coding(
+            task,
+            workspace,
+            model,
+            unavailable=(
+                f"Merging {ctx.base_branch} into {ctx.head_branch} has conflicts, "
+                "but no configured coding agent is ready to resolve them"
+            ),
+            on_progress=on_progress,
+        )
+
+    return resolve
+
+
+def _run_coding(
+    task: str,
+    workspace: str,
+    model: str | None,
+    *,
+    unavailable: str,
+    on_progress: Progress | None = None,
+) -> CodingResult:
+    available, _detail = verify_coding_agent()
+    if not available:
+        return CodingResult(success=False, summary="", error=unavailable, returncode=-1)
+    return run_coding_task(
+        task,
+        workspace=workspace,
+        model=model or coding_model(),
+        timeout_sec=coding_timeout_seconds(),
+        on_progress=on_progress,
+    )
+
+
+def require_confirmation(
+    confirm_fn: Callable[[str], str] | None,
+    prompt: str,
+) -> None:
+    """Ask for local confirmation when a shell confirmation function is present."""
+    if confirm_fn is None:
+        return
+    answer = confirm_fn(prompt)
+    if answer.strip().lower() not in _YES:
+        raise GitHubCiFixError(ERR_CONFIRMATION_DENIED, "User denied the requested CI fix.")
+
+
+def _base_output(ctx: CiFixContext | None = None) -> dict[str, Any]:
+    return {
+        "source": SOURCE,
+        "success": False,
+        "error_kind": None,
+        "owner": ctx.owner if ctx else "",
+        "repo": ctx.repo if ctx else "",
+        "source_head_sha": ctx.head_sha if ctx else "",
+        "target_type": ctx.target_kind if ctx else "",
+        "target_branch": ((ctx.target_branch or ctx.base_branch or ctx.head_branch) if ctx else ""),
+        "pr_number": ctx.number if ctx else None,
+        "pr_url": ctx.url if ctx and ctx.number is not None else "",
+        "target_url": ctx.url if ctx else "",
+        "base_branch": ctx.base_branch if ctx else "",
+        "head_branch": ctx.head_branch if ctx else "",
+        "failing_checks": [check.name for check in ctx.failing_checks] if ctx else [],
+        "summary": "",
+        "response_text": "",
+        "changed_files": [],
+        "diff": "",
+        "diff_truncated": False,
+        "error": None,
+        "branch_name": None,
+        "checks_state": None,
+        "check_names": [],
+        "merged_base_branch": "",
+        "resolved_conflicts": [],
+    }
+
+
+def to_output(
+    ctx: CiFixContext, result: CodingResult, merge: BaseMergeResult | None = None
+) -> dict[str, Any]:
+    error_kind: str | None = None
+    if not result.success:
+        error_kind = ERR_TIMEOUT if result.timed_out else ERR_EXECUTION
+    base = with_merge_output(_base_output(ctx), merge) if merge else _base_output(ctx)
+    return {
+        **base,
+        "success": result.success,
+        "error_kind": error_kind,
+        "summary": result.summary,
+        "response_text": _result_response_text(ctx, result),
+        "changed_files": result.changed_files,
+        "diff": result.diff,
+        "diff_truncated": result.diff_truncated,
+        "error": result.error,
+    }
+
+
+def with_merge_output(output: dict[str, Any], merge: BaseMergeResult) -> dict[str, Any]:
+    return {
+        **output,
+        "merged_base_branch": merge.base_branch,
+        "resolved_conflicts": list(merge.resolved_files),
+        "conflict_resolutions": list(merge.resolutions),
+    }
+
+
+def with_push_output(
+    output: dict[str, Any],
+    push: PushResult,
+    verification: CheckVerification,
+) -> dict[str, Any]:
+    owner = str(output.get("owner") or "")
+    repo = str(output.get("repo") or "")
+    number = output.get("pr_number")
+    target_branch = str(output.get("target_branch") or output.get("base_branch") or "")
+    branch_target = output.get("target_type") == CI_TARGET_BRANCH or number is None
+    target = (
+        f"{owner}/{repo} branch {target_branch}" if branch_target else f"{owner}/{repo}#{number}"
+    )
+    checks_noun = "branch checks" if branch_target else "PR checks"
+    result = {
+        **output,
+        "branch_name": push.branch_name,
+        "fix_head_sha": push.head_sha,
+        "changed_files": push.changed_files,
+        "checks_state": verification.state.value,
+        "check_names": list(verification.check_names),
+    }
+    if verification.state is CheckState.PASSED:
+        return {
+            **result,
+            "response_text": (
+                f"Fixed failing CI for {target}, {_merge_phrase(output)}pushed {push.branch_name}, "
+                f"and all {checks_noun} passed."
+            ),
+        }
+    if verification.state is CheckState.CONFLICTED:
+        base_branch = str(output.get("base_branch") or "the base branch")
+        return {
+            **result,
+            "success": False,
+            "error_kind": ERR_MERGE_CONFLICT,
+            "error": (
+                f"GitHub will not start {checks_noun} because {push.branch_name} "
+                f"still conflicts with {base_branch}."
+            ),
+            "response_text": (
+                f"Pushed a CI fix to {push.branch_name}, but GitHub will not start {checks_noun} "
+                f"because the branch still conflicts with {base_branch}."
+            ),
+        }
+    if verification.state is CheckState.FAILED:
+        failing = ", ".join(verification.failing_checks) or "unknown checks"
+        return {
+            **result,
+            "success": False,
+            "error_kind": ERR_CHECKS_FAILED,
+            "error": f"Post-push {checks_noun} failed: {failing}.",
+            "response_text": (
+                f"Pushed a CI fix to {push.branch_name}, but {checks_noun} are still failing: "
+                f"{failing}."
+            ),
+        }
+    if verification.state is CheckState.SUPERSEDED:
+        expected = push.head_sha[:12]
+        observed = verification.observed_head_sha[:12] or "another commit"
+        return {
+            **result,
+            "success": False,
+            "error_kind": ERR_CHECKS_SUPERSEDED,
+            "error": (
+                f"PR head changed from pushed commit {expected} to {observed} "
+                "before verification finished."
+            ),
+            "response_text": (
+                f"Pushed a CI fix to {push.branch_name}, but another commit replaced "
+                f"{expected} before its checks finished; verification stopped."
+            ),
+        }
+    return {
+        **result,
+        "success": False,
+        "error_kind": ERR_CHECKS_TIMEOUT,
+        "error": (f"Post-push {checks_noun} did not finish before the verification timeout."),
+        "response_text": (
+            f"Pushed a CI fix to {push.branch_name}, but {checks_noun} did not finish within "
+            f"{DEFAULT_CHECK_WAIT_SECONDS // 60} minutes."
+        ),
+    }
+
+
+def push_error_output(output: dict[str, Any], exc: GitHubCiFixError) -> dict[str, Any]:
+    return {
+        **output,
+        "success": False,
+        "error_kind": exc.kind,
+        "error": exc.message,
+        "response_text": _single_line(exc.message),
+        "branch_name": exc.branch_name,
+    }
+
+
+def error_output(kind: str, message: str, ctx: CiFixContext | None = None) -> dict[str, Any]:
+    return {
+        **_base_output(ctx),
+        "error_kind": kind,
+        "error": message,
+        "response_text": _single_line(message),
+    }
+
+
+def _result_response_text(ctx: CiFixContext, result: CodingResult) -> str:
+    if not result.success:
+        return _single_line(result.error or "No CI fix was produced; no push was made.")
+    changed = ", ".join(result.changed_files) if result.changed_files else "the workspace"
+    return f"Prepared a CI fix for {ctx.target_label}; changed {changed}."
+
+
+def _single_line(value: str) -> str:
+    return " ".join(value.split())
+
+
+def _merge_phrase(output: dict[str, Any]) -> str:
+    base_branch = str(output.get("merged_base_branch") or "")
+    if not base_branch:
+        return ""
+    resolved = [str(path) for path in output.get("resolved_conflicts") or []]
+    if not resolved:
+        return f"merged {base_branch}, "
+    return f"merged {base_branch} (resolved conflicts in {', '.join(resolved)}), "
+
+
+def _confirmation_prompt(ctx: CiFixContext) -> str:
+    if ctx.is_branch_target:
+        return (
+            f"Fix failing CI for {ctx.target_label} in a separate git worktree, "
+            "editing files, committing, and pushing a fresh repair branch? [y/N] "
+        )
+    if ctx.needs_base_merge:
+        return (
+            f"Fix CI for {ctx.target_label} by checking out {ctx.head_branch}, "
+            f"merging {ctx.base_branch} into it and resolving conflicts, editing files, "
+            "committing, and pushing to that branch? [y/N] "
+        )
+    return (
+        f"Fix failing CI for {ctx.target_label} by checking out {ctx.head_branch}, "
+        f"merging {ctx.base_branch} into it if it is behind (resolving any conflicts), "
+        "editing files, committing, and pushing to that branch? [y/N] "
+    )
+
+
+def run_ci_fix(
+    *,
+    owner: str | None = None,
+    repo: str | None = None,
+    pr_number: int | None = None,
+    pr_url: str | None = None,
+    branch: str | None = None,
+    workspace: str | None = None,
+    model: str | None = None,
+    github_token: str | None = None,
+    confirm_fn: Callable[[str], str] | None = None,
+    allowed_paths: frozenset[str] | None = None,
+    console: Any = None,
+) -> dict[str, Any]:
+    with ExitStack() as workspaces:
+        ws = workspace or coding_workspace()
+        branch_name = (branch or "").strip()
+        ctx: CiFixContext | None = None
+        worktree: BranchWorktree | None = None
+        run_workspace = ws
+        try:
+            if branch_name and (pr_number is not None or pr_url):
+                raise GitHubCiFixError(
+                    ERR_INVALID_INPUT,
+                    "Pass either a PR selector or a branch, not both; no push was made.",
+                )
+            if branch_name:
+                ctx = gather_branch_ci_fix_context(
+                    branch=branch_name,
+                    owner=owner,
+                    repo=repo,
+                    workspace=ws,
+                    github_token=github_token,
+                    allow_clean=True,
+                )
+            else:
+                ctx = gather_ci_fix_context(
+                    owner=owner,
+                    repo=repo,
+                    pr_number=pr_number,
+                    pr_url=pr_url,
+                    workspace=ws,
+                    github_token=github_token,
+                    allow_clean=True,
+                )
+            ws = str(
+                workspaces.enter_context(
+                    repair_workspace(
+                        ctx.owner,
+                        ctx.repo,
+                        workspace=workspace if (owner and repo) or pr_url else ws,
+                        token=resolve_github_token(github_token),
+                        target=ctx.head_branch,
+                    )
+                )
+            )
+            recovered = resumed_push(ctx, ws, github_token=resolve_github_token(github_token))
+            if recovered is not None:
+                restored, push = recovered
+                output = to_output(
+                    restored, CodingResult(success=True, summary="Resumed repair verification")
+                )
+                return _verify_repair(restored, output, push, github_token)
+            if not ctx.failing_checks and not ctx.needs_base_merge:
+                return error_output(
+                    ERR_NO_FAILING_CHECKS, "No failing checks; no repair was needed.", ctx
+                )
+            ensure_push_ready(github_token=github_token)
+            require_confirmation(confirm_fn, _confirmation_prompt(ctx))
+            if ctx.is_branch_target:
+                worktree = create_branch_worktree(ws, ctx, token=resolve_github_token(github_token))
+                run_workspace = worktree.path
+                workspaces.callback(cleanup_branch_worktree, ws, worktree)
+                ensure_head_revision(run_workspace, ctx.head_sha)
+                ctx = replace(ctx, head_branch=worktree.branch_name)
+            else:
+                checkout_target_branch(ws, ctx, token=resolve_github_token(github_token))
+                ensure_head_revision(ws, ctx.head_sha)
+                run_workspace = ws
+        except (GitHubCiFixError, GitCommandError) as exc:
+            return error_output(exc.kind, exc.message, ctx)
+
+        output = _base_output(ctx)
+        try:
+            merge = _merge_base_if_behind(ctx, run_workspace, model, github_token, console)
+            if merge is not None:
+                output = with_merge_output(output, merge)
+                ctx = _with_base_merged(ctx)
+            baseline = pre_coding_changes(run_workspace)
+            result = _fix_result(ctx, run_workspace, model, merge)
+            output = to_output(ctx, result, merge)
+            if not result.success:
+                return output
+
+            committed = _enforce_scope(run_workspace, ctx, merge, allowed_paths)
+            push = push_ci_fix(
+                ctx=ctx,
+                result=result,
+                workspace=run_workspace,
+                baseline=baseline,
+                github_token=github_token,
+                already_committed=merge is not None or committed,
+            )
+        except GitHubCiFixError as exc:
+            return push_error_output(output, exc)
+        verified = _verify_repair(ctx, output, push, github_token)
+        if verified.get("checks_state") != CheckState.CONFLICTED.value:
+            return verified
+        return _merge_after_conflicted_push(
+            ctx,
+            output,
+            push,
+            verified,
+            run_workspace,
+            model,
+            github_token,
+            allowed_paths,
+            console=console,
+        )
+
+
+def _enforce_scope(
+    workspace: str,
+    ctx: CiFixContext,
+    merge: BaseMergeResult | None,
+    allowed_paths: frozenset[str] | None,
+) -> bool:
+    """Refuse a repair that touched files outside ``allowed_paths``; report whether it committed.
+
+    Scoped edits are the repair's own: the worktree, commits made after the
+    merge (or after the source head when nothing was merged), and the hand edits
+    inside the merge commit itself. The base's own changes are not counted.
+    """
+    if allowed_paths is None:
+        return False
+    since = merge.commit_sha if merge is not None else ctx.head_sha
+    try:
+        changed = set(changed_paths(workspace))
+        changed.update(committed_paths_since(workspace, since))
+        if merge is not None:
+            changed.update(merge_commit_edits(workspace, merge.commit_sha))
+        committed = head_sha(workspace) != ctx.head_sha
+    except GitCommandError as exc:
+        raise GitHubCiFixError(exc.kind, exc.message) from exc
+    if not changed.issubset(allowed_paths):
+        raise GitHubCiFixError(
+            ERR_INVALID_INPUT,
+            "The repair changed files outside its authorized scope; no push was made.",
+        )
+    return committed
+
+
+def _merge_base_if_behind(
+    ctx: CiFixContext,
+    workspace: str,
+    model: str | None,
+    github_token: str | None,
+    console: Any = None,
+) -> BaseMergeResult | None:
+    """Merge the base into a PR head that lacks its commits; ``None`` when already up to date.
+
+    Runs whether or not GitHub already reports a conflict: fixing shared files
+    on a stale head is exactly what turns a merely behind PR into a conflicted
+    one, and the failure may already be fixed on the base.
+    """
+    token = resolve_github_token(github_token)
+    if ctx.is_branch_target or not base_has_new_commits(workspace, ctx, token=token):
+        return None
+    return merge_base_into_head(
+        workspace,
+        ctx,
+        baseline=pre_coding_changes(workspace),
+        resolve_conflicts=resolve_merge_conflicts(ctx, workspace, model),
+        token=token,
+        console=console,
+        on_progress=_progress_printer(console),
+    )
+
+
+def _progress_printer(console: Any) -> Progress | None:
+    """Print each step the coding agent takes as a dim line under the running tool."""
+    if console is None:
+        return None
+
+    def show(step: str) -> None:
+        console.print(f"[dim]  {escape(step)}[/]")
+
+    return show
+
+
+def _with_base_merged(ctx: CiFixContext) -> CiFixContext:
+    """Retarget the coding task at the merged head so the agent knows the base is in."""
+    if not ctx.failing_checks:
+        return ctx
+    return replace(ctx, task=build_fix_task(ctx, base_merged=True))
+
+
+def _merge_after_conflicted_push(
+    ctx: CiFixContext,
+    output: dict[str, Any],
+    push: PushResult,
+    conflicted: dict[str, Any],
+    workspace: str,
+    model: str | None,
+    github_token: str | None,
+    allowed_paths: frozenset[str] | None = None,
+    console: Any = None,
+) -> dict[str, Any]:
+    """Bring the base into a pushed head GitHub reports as conflicted, push, and re-verify.
+
+    The base moved under the repair (or the fix itself collided with it), so
+    the pushed commit is the new source head. One recovery only: a second
+    conflict is reported, not retried.
+    """
+    ctx = replace(ctx, head_sha=push.head_sha)
+    try:
+        merge = _merge_base_if_behind(ctx, workspace, model, github_token, console)
+        if merge is None:
+            return conflicted
+        output = with_merge_output(output, merge)
+        _enforce_scope(workspace, ctx, merge, allowed_paths)
+        merged = push_ci_fix(
+            ctx=ctx,
+            result=CodingResult(success=True, summary=merge.summary),
+            workspace=workspace,
+            baseline=pre_coding_changes(workspace),
+            github_token=github_token,
+            already_committed=True,
+        )
+    except GitHubCiFixError as exc:
+        base_branch = ctx.base_branch or "the base branch"
+        detail = _NO_PUSH_TAIL_RE.sub("", exc.message).rstrip(".")
+        message = (
+            f"Pushed a CI fix to {push.branch_name}, but it conflicts with {base_branch} "
+            f"and the merge could not be completed: {detail}. The fix commit stays pushed."
+        )
+        return {
+            **push_error_output(output, exc),
+            "branch_name": push.branch_name,
+            "fix_head_sha": push.head_sha,
+            "changed_files": push.changed_files,
+            "checks_state": CheckState.CONFLICTED.value,
+            "error": message,
+            "response_text": _single_line(message),
+        }
+    combined = replace(
+        merged, changed_files=list(dict.fromkeys((*push.changed_files, *merged.changed_files)))
+    )
+    return _verify_repair(ctx, output, combined, github_token)
+
+
+def _verify_repair(
+    ctx: CiFixContext, output: dict[str, Any], push: PushResult, github_token: str | None
+) -> dict[str, Any]:
+    try:
+        wait_for_checks = wait_for_branch_checks if ctx.is_branch_target else wait_for_pr_checks
+        verification = wait_for_checks(
+            ctx,
+            github_token=github_token,
+            expected_head_sha=push.head_sha,
+        )
+    except GitHubCiFixError as exc:
+        return {
+            **push_error_output(output, exc),
+            "branch_name": push.branch_name,
+            "fix_head_sha": push.head_sha,
+            "changed_files": push.changed_files,
+            "response_text": (
+                f"Pushed a CI fix to {push.branch_name}, but could not verify the new checks."
+            ),
+        }
+    record_verification(
+        repair_key(
+            ctx.owner, ctx.repo, str(ctx.number) if not ctx.is_branch_target else ctx.target_branch
+        ),
+        push.head_sha,
+        verification.state.value,
+    )
+    if verification.state is CheckState.PASSED and ctx.number is not None:
+        publish_repair_epoch(
+            ctx.owner,
+            ctx.repo,
+            ctx.number,
+            github_token=github_token,
+            fixing_sha=push.head_sha,
+        )
+    return with_push_output(output, push, verification)
+
+
+def _fix_result(
+    ctx: CiFixContext, workspace: str, model: str | None, merge: BaseMergeResult | None
+) -> CodingResult:
+    """Run the CI fix, or stand in for it when the base merge was the whole repair."""
+    if ctx.failing_checks:
+        return run_fix(ctx, workspace, model)
+    summary = merge.summary if merge else ""
+    return CodingResult(success=True, summary=summary)
+
+
+__all__ = [
+    "SOURCE",
+    "ensure_push_ready",
+    "error_output",
+    "pre_coding_changes",
+    "require_confirmation",
+    "resolve_merge_conflicts",
+    "run_ci_fix",
+    "run_fix",
+    "with_merge_output",
+    "with_push_output",
+]
