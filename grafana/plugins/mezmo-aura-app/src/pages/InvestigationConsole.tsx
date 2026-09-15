@@ -18,6 +18,21 @@ function getCurrentTimestamp(): string {
   return new Date().toLocaleTimeString();
 }
 
+function getNow(): number {
+  return performance.now();
+}
+
+function calculateElapsed(startTime: number): number {
+  return Math.round(performance.now() - startTime);
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
 export const InvestigationConsole: React.FC = () => {
   const s = useStyles2(getStyles);
 
@@ -28,9 +43,34 @@ export const InvestigationConsole: React.FC = () => {
   const [health, setHealth] = useState<AuraHealthResponse | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [activeModel, setActiveModel] = useState<string>('Aura SRE Orchestrator');
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [activeElapsedMs, setActiveElapsedMs] = useState<number>(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Live investigation duration timer
+  useEffect(() => {
+    if (!isInvestigating) {
+      return;
+    }
+    const start = getNow();
+    const timer = setInterval(() => {
+      setActiveElapsedMs(calculateElapsed(start));
+    }, 100);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [isInvestigating]);
+
+  const handleCopyMessage = (id: string, content: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedMessageId(id);
+    setTimeout(() => {
+      setCopiedMessageId((current) => (current === id ? null : current));
+    }, 2000);
+  };
 
   // Scroll to bottom
   const scrollToBottom = () => {
@@ -97,6 +137,8 @@ export const InvestigationConsole: React.FC = () => {
     setInputText('');
     setIsInvestigating(true);
 
+    const startTime = getNow();
+
     try {
       const apiMessages = updatedHistory.map((m) => ({
         role: m.role,
@@ -104,26 +146,31 @@ export const InvestigationConsole: React.FC = () => {
       }));
 
       const reply = await AuraApiClient.sendChat(apiMessages);
+      const elapsedMs = calculateElapsed(startTime);
 
       const assistantMsg: ChatMessage = {
         id: generateMessageId(),
         role: 'assistant',
         content: reply,
         timestamp: getCurrentTimestamp(),
+        elapsedMs,
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
+      const elapsedMs = calculateElapsed(startTime);
       const errorMsg: ChatMessage = {
         id: generateMessageId(),
         role: 'assistant',
         content: `🔴 **Investigation Error**: ${err.message || 'Unable to communicate with AURA Orchestrator. Please check that the AURA container is running.'}`,
         timestamp: getCurrentTimestamp(),
         isError: true,
+        elapsedMs,
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsInvestigating(false);
+      setActiveElapsedMs(0);
       setTimeout(() => textareaRef.current?.focus(), 50);
     }
   };
@@ -222,10 +269,35 @@ export const InvestigationConsole: React.FC = () => {
                   </div>
                   <div className={s.messageContent}>
                     <div className={s.messageMeta}>
-                      <span className={s.msgSender}>
-                        {msg.role === 'user' ? 'Operator' : 'Mezmo AURA SRE Orchestrator'}
-                      </span>
-                      <span className={s.msgTime}>{msg.timestamp}</span>
+                      <div className={s.metaLeft}>
+                        <span className={s.msgSender}>
+                          {msg.role === 'user' ? 'Operator' : 'Mezmo AURA SRE Orchestrator'}
+                        </span>
+                        <span className={s.msgTime}>{msg.timestamp}</span>
+                        {msg.elapsedMs !== undefined && (
+                          <span
+                            className={s.elapsedBadge}
+                            title={`Investigation completed in ${formatDuration(msg.elapsedMs)} (${msg.elapsedMs} ms)`}
+                          >
+                            <Icon name="clock-nine" size="xs" />
+                            <span>{formatDuration(msg.elapsedMs)}</span>
+                          </span>
+                        )}
+                      </div>
+                      {msg.role === 'assistant' && (
+                        <div className={s.metaActions}>
+                          <Button
+                            size="xs"
+                            variant="secondary"
+                            fill="outline"
+                            icon={copiedMessageId === msg.id ? 'check' : 'copy'}
+                            onClick={() => handleCopyMessage(msg.id, msg.content)}
+                            className={s.copyBtn}
+                          >
+                            {copiedMessageId === msg.id ? 'Copied' : 'Copy Investigation'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                     <div className={msg.role === 'user' ? s.bubbleUser : s.bubbleAssistant}>
                       {msg.role === 'user' ? (
@@ -244,7 +316,13 @@ export const InvestigationConsole: React.FC = () => {
                   <div className={s.avatarAI}>AI</div>
                   <div className={s.messageContent}>
                     <div className={s.messageMeta}>
-                      <span className={s.msgSender}>Mezmo AURA SRE Orchestrator</span>
+                      <div className={s.metaLeft}>
+                        <span className={s.msgSender}>Mezmo AURA SRE Orchestrator</span>
+                        <span className={s.elapsedBadgeActive} title="Investigation in progress">
+                          <Icon name="clock-nine" size="xs" />
+                          <span>{formatDuration(activeElapsedMs)}</span>
+                        </span>
+                      </div>
                     </div>
                     <div className={s.thinkingBubble}>
                       <Spinner size={18} inline />
@@ -466,11 +544,58 @@ const getStyles = (theme: GrafanaTheme2) => ({
     flex-direction: column;
     gap: 4px;
     min-width: 0;
+    width: 100%;
   `,
   messageMeta: css`
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
+    width: 100%;
+    min-height: 24px;
+  `,
+  metaLeft: css`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  `,
+  metaActions: css`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  `,
+  elapsedBadge: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 12px;
+    padding: 1px 7px;
+    font-size: 0.7rem;
+    font-family: ${theme.typography.fontFamilyMonospace};
+    font-weight: 600;
+  `,
+  elapsedBadgeActive: css`
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 12px;
+    padding: 1px 7px;
+    font-size: 0.7rem;
+    font-family: ${theme.typography.fontFamilyMonospace};
+    font-weight: 600;
+  `,
+  copyBtn: css`
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    height: 22px;
   `,
   msgSender: css`
     font-size: 0.75rem;

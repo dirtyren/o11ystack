@@ -462,10 +462,64 @@
       gap: 0.35rem;
     }
 
+    .message-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    .meta-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .message.user .message-meta {
+      justify-content: flex-end;
+    }
+
     .message-sender {
       font-family: var(--font-mono);
       font-size: 0.72rem;
       color: var(--text-dim);
+    }
+
+    .elapsed-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: var(--primary-subtle);
+      color: var(--cyan);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1px 7px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .copy-investigation-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-investigation-btn:hover {
+      border-color: var(--primary);
+      color: var(--text-main);
+      background: var(--primary-subtle);
     }
 
     .message.user .message-sender {
@@ -1015,7 +1069,11 @@
           <div class="message assistant">
             <div class="avatar assistant">AI</div>
             <div class="message-content">
-              <span class="message-sender">Mezmo AURA SRE Orchestrator &bull; Live Gateway</span>
+              <div class="message-meta">
+                <div class="meta-left">
+                  <span class="message-sender">Mezmo AURA SRE Orchestrator &bull; Live Gateway</span>
+                </div>
+              </div>
               <div class="message-bubble">
                 <p><strong>System Online &amp; Autonomous Telemetry Connected.</strong></p>
                 <p>I am your multi-agent <strong>Site Reliability Engineering (SRE)</strong> partner. I am connected directly to your observability stack via <strong>LiteLLM</strong> and <strong>216 live Model Context Protocol (MCP)</strong> tools.</p>
@@ -1397,7 +1455,7 @@
     }
 
     // Append Message
-    function appendMessage(role, text, isThinking = false) {
+    function appendMessage(role, text, isThinking = false, elapsedMs = null) {
       const msgDiv = document.createElement('div');
       msgDiv.className = `message ${role}`;
 
@@ -1408,9 +1466,40 @@
       const contentDiv = document.createElement('div');
       contentDiv.className = 'message-content';
 
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'message-meta';
+
+      const metaLeft = document.createElement('div');
+      metaLeft.className = 'meta-left';
+
       const senderSpan = document.createElement('span');
       senderSpan.className = 'message-sender';
       senderSpan.textContent = role === 'assistant' ? 'Mezmo AURA SRE Orchestrator' : 'Operator';
+      metaLeft.appendChild(senderSpan);
+
+      if (elapsedMs !== null && elapsedMs !== undefined) {
+        const durationStr = elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(2)}s`;
+        const elapsedSpan = document.createElement('span');
+        elapsedSpan.className = 'elapsed-badge';
+        elapsedSpan.textContent = `⏱ ${durationStr}`;
+        elapsedSpan.title = `Investigation completed in ${durationStr} (${elapsedMs} ms)`;
+        metaLeft.appendChild(elapsedSpan);
+      }
+
+      metaDiv.appendChild(metaLeft);
+
+      if (role === 'assistant' && !isThinking) {
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-investigation-btn';
+        copyBtn.textContent = 'Copy Investigation';
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(text).then(() => {
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy Investigation'; }, 2000);
+          });
+        };
+        metaDiv.appendChild(copyBtn);
+      }
 
       const bubble = document.createElement('div');
       bubble.className = 'message-bubble';
@@ -1421,13 +1510,14 @@
           <div class="thinking-box">
             <div class="spinner"></div>
             <span>Orchestrating multi-agent investigation across VictoriaMetrics, Logs, Traces &amp; Grafana...</span>
+            <span class="elapsed-badge" id="live-thinking-timer" style="margin-left:auto;">⏱ 0.0s</span>
           </div>
         `;
       } else {
         bubble.innerHTML = role === 'assistant' ? parseMarkdown(text) : text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
       }
 
-      contentDiv.appendChild(senderSpan);
+      contentDiv.appendChild(metaDiv);
       contentDiv.appendChild(bubble);
       msgDiv.appendChild(avatar);
       msgDiv.appendChild(contentDiv);
@@ -1435,7 +1525,7 @@
       messagesFeed.appendChild(msgDiv);
       messagesFeed.scrollTop = messagesFeed.scrollHeight;
 
-      return bubble;
+      return { bubble, metaDiv, metaLeft };
     }
 
     // Quick Prompt Helper
@@ -1458,8 +1548,20 @@
       appendMessage('user', text);
       conversationHistory.push({ role: 'user', content: text });
 
-      // Append Thinking bubble
-      const thinkingBubble = appendMessage('assistant', '', true);
+      // Start timing
+      const startTime = performance.now();
+      const thinkingObj = appendMessage('assistant', '', true);
+      const thinkingBubble = thinkingObj.bubble;
+      const thinkingMetaDiv = thinkingObj.metaDiv;
+      const thinkingMetaLeft = thinkingObj.metaLeft;
+
+      const liveTimerInterval = setInterval(() => {
+        const timerEl = document.getElementById('live-thinking-timer');
+        if (timerEl) {
+          const curElapsed = (performance.now() - startTime) / 1000;
+          timerEl.textContent = `⏱ ${curElapsed.toFixed(1)}s`;
+        }
+      }, 100);
 
       try {
         const response = await fetch('/aura/v1/chat/completions', {
@@ -1472,6 +1574,17 @@
           })
         });
 
+        clearInterval(liveTimerInterval);
+        const elapsedMs = Math.round(performance.now() - startTime);
+        const durationStr = elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(2)}s`;
+
+        // Add elapsed badge to header
+        const elapsedSpan = document.createElement('span');
+        elapsedSpan.className = 'elapsed-badge';
+        elapsedSpan.textContent = `⏱ ${durationStr}`;
+        elapsedSpan.title = `Investigation completed in ${durationStr} (${elapsedMs} ms)`;
+        thinkingMetaLeft.appendChild(elapsedSpan);
+
         if (!response.ok) {
           const errText = await response.text();
           thinkingBubble.innerHTML = `<p style="color:var(--red);"><strong>Error:</strong> HTTP ${response.status} - ${errText || response.statusText}</p>`;
@@ -1483,8 +1596,29 @@
 
           thinkingBubble.innerHTML = parseMarkdown(assistantReply);
           conversationHistory.push({ role: 'assistant', content: assistantReply });
+
+          // Add copy button
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'copy-investigation-btn';
+          copyBtn.textContent = 'Copy Investigation';
+          copyBtn.onclick = () => {
+            navigator.clipboard.writeText(assistantReply).then(() => {
+              copyBtn.textContent = 'Copied!';
+              setTimeout(() => { copyBtn.textContent = 'Copy Investigation'; }, 2000);
+            });
+          };
+          thinkingMetaDiv.appendChild(copyBtn);
         }
       } catch (err) {
+        clearInterval(liveTimerInterval);
+        const elapsedMs = Math.round(performance.now() - startTime);
+        const durationStr = elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(2)}s`;
+
+        const elapsedSpan = document.createElement('span');
+        elapsedSpan.className = 'elapsed-badge';
+        elapsedSpan.textContent = `⏱ ${durationStr}`;
+        thinkingMetaLeft.appendChild(elapsedSpan);
+
         thinkingBubble.innerHTML = `<p style="color:var(--red);"><strong>Network Connection Failure:</strong> ${err.message}</p>`;
       } finally {
         isProcessing = false;
@@ -1499,7 +1633,11 @@
         <div class="message assistant">
           <div class="avatar assistant">AI</div>
           <div class="message-content">
-            <span class="message-sender">Mezmo AURA SRE Orchestrator &bull; Live Gateway</span>
+            <div class="message-meta">
+              <div class="meta-left">
+                <span class="message-sender">Mezmo AURA SRE Orchestrator &bull; Live Gateway</span>
+              </div>
+            </div>
             <div class="message-bubble">
               <p><strong>Console cleared.</strong> Ready for new incident investigation or telemetry queries.</p>
             </div>
