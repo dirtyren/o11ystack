@@ -1199,6 +1199,22 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Feature Highlights / Capabilities -->
+              <div style="margin-top:1.25rem;margin-bottom:1.25rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+                <span class="badge" style="background:rgba(99,102,241,0.15);color:#818cf8;font-size:0.75rem;padding:0.3rem 0.65rem;border-radius:9999px;border:1px solid rgba(99,102,241,0.3);font-weight:600">
+                  ⚡ Native Grafana App
+                </span>
+                <span class="badge" style="background:rgba(16,185,129,0.15);color:#34d399;font-size:0.75rem;padding:0.3rem 0.65rem;border-radius:9999px;border:1px solid rgba(16,185,129,0.3);font-weight:600">
+                  ⏱ Live &amp; Recorded Elapsed Time
+                </span>
+                <span class="badge" style="background:rgba(245,158,11,0.15);color:#fbbf24;font-size:0.75rem;padding:0.3rem 0.65rem;border-radius:9999px;border:1px solid rgba(245,158,11,0.3);font-weight:600">
+                  📋 1-Click Investigation Copy
+                </span>
+                <span class="badge" style="background:rgba(14,165,233,0.15);color:#38bdf8;font-size:0.75rem;padding:0.3rem 0.65rem;border-radius:9999px;border:1px solid rgba(14,165,233,0.3);font-weight:600">
+                  🔍 216 Live MCP Tools
+                </span>
+              </div>
             </div>
 
             <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
@@ -1387,23 +1403,29 @@
                 <div class="software-icon-wrapper" style="color:var(--violet)">
                   <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.1 12.5"/></svg>
                 </div>
-                <span class="auth-pill basic">Basic Auth</span>
+                <div style="display:flex;gap:0.35rem;flex-wrap:wrap">
+                  <span class="auth-pill" style="background:rgba(99,102,241,0.15);color:var(--violet)">Grafana App</span>
+                  <span class="auth-pill basic">Basic Auth</span>
+                </div>
               </div>
               <h4 class="software-name">Mezmo AURA</h4>
               <div class="software-tagline">Autonomous SRE AI Agent</div>
               <p class="software-desc">
-                Multi-agent incident investigator using LiteLLM MCP hub to execute 216 live tools across metrics, logs, traces, and Grafana alert states.
+                Multi-agent incident investigator using LiteLLM MCP hub to execute 216 live tools across metrics, logs, traces, and Grafana alert states. Available natively in Grafana or via standalone console.
               </p>
               <ul class="spec-list">
-                <li>Port: :8080 (Internal) &bull; /aura/ (Public)</li>
-                <li>OpenAI-compatible /v1/chat/completions API</li>
-                <li>Streaming SSE output with multi-turn planning</li>
-                <li>Automated hypothesis testing &amp; remediation</li>
+                <li>Native Grafana App: /grafana/a/mezmo-aura-app/console</li>
+                <li>Live &amp; recorded elapsed investigation time (MTTD)</li>
+                <li>1-Click investigation copy &amp; Grafana trace reasoning</li>
+                <li>Port: :8080 (Internal) &bull; /aura/ (Web Console)</li>
               </ul>
             </div>
             <div class="card-actions">
-              <span style="font-size:0.75rem;color:var(--text-dim)">Default: admin</span>
-              <a href="/aura/" class="btn btn-primary btn-sm">Launch AURA &rarr;</a>
+              <span style="font-size:0.75rem;color:var(--text-dim)">Grafana / Basic Auth</span>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                <a href="/grafana/a/mezmo-aura-app/console" class="btn btn-primary btn-sm">Open in Grafana &rarr;</a>
+                <a href="/aura/" class="btn btn-secondary btn-sm">Web Console &rarr;</a>
+              </div>
             </div>
           </div>
 

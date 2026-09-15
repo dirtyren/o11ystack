@@ -210,21 +210,29 @@ Expected output:
 1. Navigate to **`https://<server>/`** in your browser.
 2. The landing dashboard presents service cards for all components.
 3. Click the **Mezmo AURA SRE AI Agent** card to access the standalone web console at **`https://<server>/aura/`**.
+4. **Console Capabilities**:
+   - Multi-turn investigation chat with streaming updates.
+   - Quick triage chips (Log Triage, CPU/Memory Anomalies, Trace Latency, Firing Alerts, SRE Audit).
+   - **📋 1-Click Investigation Copy**: Dedicated button on each completed report to copy markdown findings to clipboard.
+   - **⏱ Elapsed Time Metric**: Live ticking timer during investigation and a persistent duration badge (`⏱ XXs`) upon completion.
 
 ---
 
 ### Method 4: Native Grafana Application (AURA SRE App)
 
-AURA is integrated directly into Grafana as a first-class **Grafana Application Plugin** (`mezmo-aura-app`), pre-provisioned and accessible right from Grafana's main navigation menu.
+AURA is integrated directly into Grafana as a first-class **Grafana Application Plugin** (`mezmo-aura-app`), pre-provisioned in `grafana/provisioning/plugins/plugins.yaml` and accessible right from Grafana's main navigation menu without needing separate Basic Auth logins.
 
 1. Navigate to **`https://<server>/grafana/`** (Log in with `admin` / your Grafana password).
 2. Open **Apps > Mezmo AURA SRE** in the left sidebar, or navigate directly to **`https://<server>/grafana/a/mezmo-aura-app/console`**.
 3. **Features available directly inside Grafana**:
    - **Autonomous Investigation Console**: Full multi-turn chat workspace with formatted PromQL/LogSQL/Trace rendering, code copying, and severity tags (🟢 🟡 🔴).
+   - **📋 1-Click Investigation Copy**: Click the **Copy Investigation** button on any SRE report to copy the full markdown analysis (including telemetry queries, root causes, and remediation steps) for incident channels (Slack, Jira, PagerDuty).
+   - **⏱ Live & Recorded Elapsed Duration**: Watch the live timer tick in real-time (`Investigating... (14.2s)`) while AURA plans turns and calls MCP tools, followed by a persistent badge (`⏱ 14.2s`) to record Mean-Time-To-Diagnose (MTTD).
    - **1-Click Automated SRE Investigations**: Quick triage chips for Log Triage, CPU/RAM utilization, Trace Latency outliers, Active Firing Alerts, and Full SRE Audits.
-   - **Live Telemetry & Specialist Status**: Real-time status for the 4 specialist workers (`metrics-analyst`, `log-analyst`, `trace-analyst`, `incident-responder`) and 216 live MCP tools.
-   - **Reasoning Traces Tab**: Direct 1-click jump to Grafana Explore with pre-filtered `service="aura"` to inspect AURA's live OpenTelemetry reasoning waterfall.
-   - **Secure Internal Proxy**: Requests are routed through Grafana's backend plugin proxy directly to `http://aura:8080`, requiring no separate authentication dialog.
+   - **Reasoning Traces Tab**: Direct 1-click jump to Grafana Explore with datasource pre-selected to `VictoriaTraces` and filter `service="aura"` to inspect AURA's live OpenTelemetry reasoning waterfall.
+   - **MCP Specialists Tab**: Real-time status for the 4 specialist workers (`metrics-analyst`, `log-analyst`, `trace-analyst`, `incident-responder`) and 216 live MCP tools.
+   - **App Configuration Tab**: View and verify backend proxy settings and connection health.
+   - **Secure Internal Proxy**: Requests are routed through Grafana's backend plugin proxy directly to `http://aura:8080`, inheriting the operator's Grafana authentication.
 
 ---
 
