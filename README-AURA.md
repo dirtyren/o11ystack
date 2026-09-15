@@ -16,7 +16,8 @@
 - [How to Access and Interact with AURA](#how-to-access-and-interact-with-aura)
   - [Method 1: Interactive Terminal Client (REPL & One-Shot)](#method-1-interactive-terminal-client-repl--one-shot)
   - [Method 2: OpenAI-Compatible REST API (curl & Python SDK)](#method-2-openai-compatible-rest-api-curl--python-sdk)
-  - [Method 3: Web Landing Portal](#method-3-web-landing-portal)
+  - [Method 3: Web Landing Portal & Standalone Console](#method-3-web-landing-portal--standalone-console)
+  - [Method 4: Native Grafana Application (AURA SRE App)](#method-4-native-grafana-application-aura-sre-app)
 - [Observing AURA's AI Reasoning Traces in Grafana](#observing-auras-ai-reasoning-traces-in-grafana)
 - [Real-World SRE Use Cases](#real-world-sre-use-cases)
   - [Use Case 1: CPU & Memory Anomaly Detection](#use-case-1-cpu--memory-anomaly-detection)
@@ -204,11 +205,26 @@ Expected output:
 
 ---
 
-### Method 3: Web Landing Portal
+### Method 3: Web Landing Portal & Standalone Console
 
 1. Navigate to **`https://<server>/`** in your browser.
 2. The landing dashboard presents service cards for all components.
-3. Click the **Mezmo AURA SRE AI Agent** card to view the API documentation and status.
+3. Click the **Mezmo AURA SRE AI Agent** card to access the standalone web console at **`https://<server>/aura/`**.
+
+---
+
+### Method 4: Native Grafana Application (AURA SRE App)
+
+AURA is integrated directly into Grafana as a first-class **Grafana Application Plugin** (`mezmo-aura-app`), pre-provisioned and accessible right from Grafana's main navigation menu.
+
+1. Navigate to **`https://<server>/grafana/`** (Log in with `admin` / your Grafana password).
+2. Open **Apps > Mezmo AURA SRE** in the left sidebar, or navigate directly to **`https://<server>/grafana/a/mezmo-aura-app/console`**.
+3. **Features available directly inside Grafana**:
+   - **Autonomous Investigation Console**: Full multi-turn chat workspace with formatted PromQL/LogSQL/Trace rendering, code copying, and severity tags (🟢 🟡 🔴).
+   - **1-Click Automated SRE Investigations**: Quick triage chips for Log Triage, CPU/RAM utilization, Trace Latency outliers, Active Firing Alerts, and Full SRE Audits.
+   - **Live Telemetry & Specialist Status**: Real-time status for the 4 specialist workers (`metrics-analyst`, `log-analyst`, `trace-analyst`, `incident-responder`) and 216 live MCP tools.
+   - **Reasoning Traces Tab**: Direct 1-click jump to Grafana Explore with pre-filtered `service="aura"` to inspect AURA's live OpenTelemetry reasoning waterfall.
+   - **Secure Internal Proxy**: Requests are routed through Grafana's backend plugin proxy directly to `http://aura:8080`, requiring no separate authentication dialog.
 
 ---
 

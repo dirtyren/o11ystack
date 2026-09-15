@@ -12,3 +12,4 @@ nginx/certs/*.pem
 *.log
 scratch/
 letsencrypt/
+**/node_modules/

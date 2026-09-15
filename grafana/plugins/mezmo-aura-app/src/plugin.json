@@ -1,0 +1,78 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "app",
+  "name": "Mezmo AURA SRE",
+  "id": "mezmo-aura-app",
+  "info": {
+    "keywords": ["ai", "sre", "agent", "aura", "mezmo", "llm", "victoriametrics", "mcp"],
+    "description": "Mezmo AURA Autonomous SRE AI Agent Console for incident investigation, telemetry querying, and root-cause analysis",
+    "author": {
+      "name": "Mezmo",
+      "url": "https://github.com/mezmo/aura"
+    },
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "includes": [
+    {
+      "type": "page",
+      "name": "Investigation Console",
+      "path": "/a/%PLUGIN_ID%/console",
+      "addToNav": true,
+      "defaultNav": true
+    },
+    {
+      "type": "page",
+      "name": "Reasoning Traces",
+      "path": "/a/%PLUGIN_ID%/traces",
+      "addToNav": true,
+      "defaultNav": false
+    },
+    {
+      "type": "page",
+      "name": "MCP Specialists",
+      "path": "/a/%PLUGIN_ID%/specialists",
+      "addToNav": true,
+      "defaultNav": false
+    },
+    {
+      "type": "page",
+      "icon": "cog",
+      "name": "Configuration",
+      "path": "/plugins/%PLUGIN_ID%",
+      "role": "Admin",
+      "addToNav": true
+    }
+  ],
+  "dependencies": {
+    "grafanaDependency": ">=10.0.0",
+    "plugins": []
+  },
+  "routes": [
+    {
+      "path": "aura",
+      "url": "http://aura:8080",
+      "reqSignedIn": true
+    },
+    {
+      "path": "aura/health",
+      "url": "http://aura:8080/health",
+      "reqSignedIn": true
+    },
+    {
+      "path": "aura/v1/models",
+      "url": "http://aura:8080/v1/models",
+      "reqSignedIn": true
+    },
+    {
+      "path": "aura/v1/chat/completions",
+      "url": "http://aura:8080/v1/chat/completions",
+      "reqSignedIn": true
+    }
+  ]
+}
