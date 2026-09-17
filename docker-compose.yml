@@ -315,6 +315,8 @@ services:
         condition: service_started
     networks:
       - o11y-net
+    healthcheck:
+      disable: true
 
   # ==========================================
   # Model Context Protocol (MCP) Servers
