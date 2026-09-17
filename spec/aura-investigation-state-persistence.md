@@ -1,8 +1,12 @@
 # SPEC / SDD — Investigation State Persistence Across Grafana Navigation
 
-- Status: Draft
-- Scope: `grafana/plugins/mezmo-aura-app` and `grafana/plugins/opensre-app` (identical console implementations)
-- Backend: Mezmo AURA `mezmo/aura:0.2.17` (`aura webserver`), OpenAI-compatible API
+- Status: Implemented (Phase 1 + Phase 2). Phase 2 uses A2A + the in-memory
+  session store; the Redis backend is feature-gated out of the published image
+  (see §7).
+- Scope: `grafana/plugins/mezmo-aura-app` (Phase 1 + Phase 2) and
+  `grafana/plugins/opensre-app` (Phase 1 only — different backend, no A2A)
+- Backend: Mezmo AURA `mezmo/aura:0.2.17` (`aura webserver`), OpenAI-compatible
+  API + A2A JSON-RPC
 - Date: 2026-09-17
 
 ---
@@ -263,20 +267,38 @@ accepts a re-run as the cost of staying on the stateless OpenAI endpoint.
 
 ---
 
-## 7. Detailed design — Phase 2 (server-side, follow-up)
+## 7. Detailed design — Phase 2 (server-side, implemented)
 
-1. Enable A2A in the compose command: append `--enable-a2a` (and set
-   `AURA_SERVER_URL` to the externally reachable base URL so the agent card publishes
-   correct absolute endpoints).
-2. Point the AURA session store at Redis instead of memory (the stack already runs
-   `redis:...`); confirm the exact config keys from the AURA 0.2.17 config schema
-   before wiring, and keep the memory backend as a fallback for local dev.
-3. Change the frontend `sendChat` path to a session-scoped, streaming call that
-   carries a `session_id`; re-attach on return by re-opening the session and
-   draining buffered events (SSE) instead of re-running.
-4. Surface the conversation ID in the Reasoning Traces page so an investigation can
-   be cross-referenced with its OTel spans (AURA already emits spans via
-   `OTEL_EXPORTER_OTLP_ENDPOINT`).
+Implemented. The AURA server runs with `--enable-a2a`; the console sends the user
+message as an A2A `message/send` task (the server forces `returnImmediately`, so
+the task is queued and the HTTP call returns at once), persists the returned
+`taskId`/`contextId` in `localStorage`, and polls `tasks/get` every ~2.5s while
+mounted. On return after navigating away, the console re-attaches to the same
+task: it shows **"in progress"** (with elapsed time) while the task is still
+`working`, or **"completed"** and appends the result — no re-run. The final
+answer is extracted from the task's `artifactId === "final"` artifact.
+
+Wire facts confirmed live against the running container:
+
+- A2A v0.3 JSON-RPC binding is served at the server root `/` (not the versioned
+  `/a2a/v1/rpc` mount, whose method names differ): methods `message/send`,
+  `tasks/get`, `tasks/cancel`, `message/stream`.
+- `message/send` returns `{id, contextId, status:{state:"working"}, history}`;
+  `tasks/get` returns the same shape with `state` progressing to
+  `completed`/`failed` and `artifacts` (the reply in an `artifactId:"final"`
+  artifact) on completion.
+
+Redis note (important correction to the original §7 step 2): the published
+`mezmo/aura:0.2.17` image does **not** compile the `session-store-redis` cargo
+feature, so `AURA_SESSION_STORE=redis` crashes the server at boot
+(`session store backend 'redis' requires the 'session-store-redis' cargo
+feature`). The in-memory session store is always compiled and is what ships.
+Redis/Valkey (env `AURA_SESSION_STORE=redis` + `AURA_SESSION_STORE_URL`) is only
+available by building a custom image with `--features session-store-redis`.
+For the single-instance deployment the in-memory backend fully delivers the
+functional requirement (background continuation + re-attach); tasks are lost only
+if AURA itself restarts mid-investigation. Redis remains a future enhancement for
+cross-restart durability / multi-instance sharing.
 
 ---
 

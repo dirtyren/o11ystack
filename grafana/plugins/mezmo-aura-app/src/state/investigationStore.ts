@@ -4,21 +4,30 @@ import { ChatMessage } from '../types';
 /**
  * Client-side persistence for the investigation console.
  *
- * The console's entire investigation state (conversation history, draft input,
- * active model, in-flight marker) is persisted to `localStorage` so that a user
- * can navigate anywhere in Grafana — another plugin page, a dashboard, Explore —
- * and come back without losing the investigation.
+ * The console's investigation state (conversation history, draft input, active
+ * model, A2A conversation context, and in-flight task marker) is persisted to
+ * `localStorage` so a user can navigate anywhere in Grafana and come back
+ * without losing the investigation.
+ *
+ * The actual investigation runs server-side as an A2A task; the in-flight
+ * record holds the task id so the client can re-attach and poll for completion
+ * after navigating away (no re-run).
  *
  * Storage is scoped per Grafana org + user + app so operators never see each
- * other's conversations, and the AURA and OpenSRE apps do not collide.
+ * other's conversations.
  */
 
 export const INVESTIGATION_STORE_VERSION = 1;
 
 export interface InFlightRecord {
   status: 'running';
+  /** A2A task id — used to poll `tasks/get` and re-attach after navigation. */
+  taskId: string;
+  /** A2A conversation context id (thread), reused across turns. */
+  contextId: string;
   /** The user prompt that triggered the in-flight investigation. */
   prompt: string;
+  /** Epoch ms when the task was submitted. */
   startedAt: number;
 }
 
@@ -27,6 +36,8 @@ export interface PersistedSession {
   messages: ChatMessage[];
   inputDraft: string;
   activeModel: string;
+  /** A2A conversation context id, persisted across turns for multi-turn chat. */
+  contextId: string | null;
   createdAt: number;
   updatedAt: number;
   inFlight: InFlightRecord | null;
@@ -90,6 +101,7 @@ export function createEmptySession(): PersistedSession {
     messages: [],
     inputDraft: '',
     activeModel: '',
+    contextId: null,
     createdAt: now,
     updatedAt: now,
     inFlight: null,
