@@ -139,3 +139,9 @@ url = "http://litellm:4000/grafana/mcp"
 headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
 description = "Grafana dashboard, alerts, and datasources server via LiteLLM"
 
+[mcp.servers.headroom]
+transport = "http_streamable"
+url = "http://litellm:4000/headroom/mcp"
+headers = { Authorization = "Bearer {{ env.LITELLM_MASTER_KEY }}" }
+description = "Headroom context compression, retrieval, and savings-stats tools via LiteLLM"
+

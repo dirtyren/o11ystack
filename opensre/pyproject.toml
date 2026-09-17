@@ -28,6 +28,7 @@ dependencies = [
     "aiohttp>=3.9.0",
     "fastapi>=0.135.3",
     "uvicorn[standard]>=0.30.0",
+    "prometheus-client>=0.21.0",
     # Authentication
     "PyJWT>=2.13.0",
     # 50.0.0 is the first version patched for CVE-2026-69247 (GHSA-g6cj-pr64-35w5,

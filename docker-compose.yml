@@ -267,6 +267,56 @@ services:
       start_period: 15s
 
   # ==========================================
+  # Headroom Context Compression (Proxy + MCP)
+  # ==========================================
+  headroom:
+    image: ghcr.io/headroomlabs-ai/headroom:latest
+    container_name: headroom
+    restart: unless-stopped
+    entrypoint: ["headroom", "proxy"]
+    command:
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8787"
+    environment:
+      HEADROOM_BEACON: "off"
+      DO_NOT_TRACK: "1"
+    networks:
+      - o11y-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8787/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  headroom-mcp:
+    image: ghcr.io/headroomlabs-ai/headroom:latest
+    container_name: headroom-mcp
+    restart: unless-stopped
+    entrypoint: ["headroom", "mcp", "serve"]
+    command:
+      - "--transport"
+      - "http"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8788"
+      - "--path"
+      - "/mcp"
+      - "--proxy-url"
+      - "http://headroom:8787"
+    environment:
+      HEADROOM_BEACON: "off"
+      DO_NOT_TRACK: "1"
+    depends_on:
+      headroom:
+        condition: service_started
+    networks:
+      - o11y-net
+
+  # ==========================================
   # Model Context Protocol (MCP) Servers
   # ==========================================
   mcp-victoriametrics:
@@ -385,6 +435,8 @@ services:
       - ./otel-collector/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
       - /var/log:/var/log:ro
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
     depends_on:
       - victoriametrics
       - victorialogs
@@ -451,6 +503,7 @@ services:
       - litellm
       - aura
       - opensre
+      - headroom
     networks:
       - o11y-net
   # ==========================================

@@ -27,6 +27,8 @@ litellm_settings:
     password: os.environ/REDIS_PASSWORD
   drop_params: true
   max_tokens: 8192
+  callbacks:
+    - prometheus
 
 # MCP Servers accessible to LiteLLM and connected agents
 mcp_servers:
@@ -46,6 +48,10 @@ mcp_servers:
     url: "http://mcp-grafana:8000/sse"
     transport: "sse"
     description: "Grafana MCP Server with full Admin permissions for dashboards, data sources, alerts, and panel queries"
+  headroom:
+    url: "http://headroom-mcp:8788/mcp"
+    transport: "http"
+    description: "Headroom context compression MCP server (headroom_compress, headroom_retrieve, headroom_stats)"
 
 # Provisioned Free and Open Models
 model_list:

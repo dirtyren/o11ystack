@@ -18,6 +18,7 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 from bootstrap.process import WEB_PROFILE, configure_process
 from infrastructure.alert_intake import router as alert_router
@@ -36,6 +37,47 @@ app.add_middleware(
 )
 
 app.include_router(alert_router)
+
+# --- Prometheus metrics ---
+REQUEST_COUNT = Counter(
+    "opensre_requests_total",
+    "Total HTTP requests served by OpenSRE",
+    ["method", "path", "status"],
+)
+REQUEST_DURATION = Histogram(
+    "opensre_request_duration_seconds",
+    "HTTP request latency in seconds",
+    ["method", "path"],
+)
+INVESTIGATIONS_TOTAL = Counter(
+    "opensre_investigations_total",
+    "Total SRE investigations executed",
+)
+INVESTIGATIONS_IN_FLIGHT = Gauge(
+    "opensre_investigations_in_flight",
+    "Investigations currently running",
+)
+
+
+@app.middleware("http")
+async def metrics_middleware(request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    if request.url.path != "/metrics":
+        route = request.scope.get("route")
+        path = route.path if route is not None else request.url.path
+        REQUEST_COUNT.labels(
+            method=request.method, path=path, status=str(response.status_code)
+        ).inc()
+        REQUEST_DURATION.labels(method=request.method, path=path).observe(
+            time.perf_counter() - start
+        )
+    return response
+
+
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 class ChatMessage(BaseModel):
@@ -106,7 +148,12 @@ async def chat_completions(req: ChatCompletionRequest):
             return f"OpenSRE Investigation encountered an error: {err}"
 
     loop = asyncio.get_running_loop()
-    response_text = await loop.run_in_executor(None, run_turn)
+    INVESTIGATIONS_IN_FLIGHT.inc()
+    try:
+        response_text = await loop.run_in_executor(None, run_turn)
+    finally:
+        INVESTIGATIONS_IN_FLIGHT.dec()
+    INVESTIGATIONS_TOTAL.inc()
 
     return {
         "id": f"chatcmpl-opensre-{int(time.time())}",

@@ -1,0 +1,95 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "schemaVersion": 39,
+  "tags": ["aura", "mezmo", "ai", "sre", "agent"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Mezmo AURA — SRE Agent",
+  "uid": "aura",
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "CPU (cores)",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}}},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=\"aura\"}[5m]))", "refId": "A", "instant": true}]
+    },
+    {
+      "type": "stat",
+      "title": "Memory Working Set",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "bytes", "color": {"mode": "thresholds"}}},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "sum(container_memory_working_set_bytes{container_label_com_docker_compose_service=\"aura\"})", "refId": "A", "instant": true}]
+    },
+    {
+      "type": "stat",
+      "title": "Network RX Rate",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "Bps", "color": {"mode": "thresholds"}}},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "sum(rate(container_network_receive_bytes_total{container_label_com_docker_compose_service=\"aura\"}[5m]))", "refId": "A", "instant": true}]
+    },
+    {
+      "type": "stat",
+      "title": "Network TX Rate",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "Bps", "color": {"mode": "thresholds"}}},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "sum(rate(container_network_transmit_bytes_total{container_label_com_docker_compose_service=\"aura\"}[5m]))", "refId": "A", "instant": true}]
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU Usage (cores)",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "fieldConfig": {"defaults": {"unit": "short"}},
+      "targets": [{"expr": "sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=\"aura\"}[5m]))", "refId": "A", "legendFormat": "cpu cores"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory Working Set",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "fieldConfig": {"defaults": {"unit": "bytes"}},
+      "targets": [{"expr": "sum(container_memory_working_set_bytes{container_label_com_docker_compose_service=\"aura\"})", "refId": "A", "legendFormat": "working set"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Network Throughput (RX / TX)",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+      "fieldConfig": {"defaults": {"unit": "Bps"}},
+      "targets": [
+        {"expr": "sum(rate(container_network_receive_bytes_total{container_label_com_docker_compose_service=\"aura\"}[5m]))", "refId": "A", "legendFormat": "rx"},
+        {"expr": "sum(rate(container_network_transmit_bytes_total{container_label_com_docker_compose_service=\"aura\"}[5m]))", "refId": "B", "legendFormat": "tx"}
+      ]
+    },
+    {
+      "type": "text",
+      "title": "AURA Observability Notes",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+      "options": {
+        "mode": "markdown",
+        "content": "**AURA does not expose a native Prometheus `/metrics` endpoint** (its Go webserver serves only `/health`, `/v1/*` and `/a2a/*`).\n\nObservability for AURA is therefore provided via:\n\n1. **Container resource metrics (this dashboard)** — CPU, memory and network from cAdvisor, filtered on `container_label_com_docker_compose_service=\"aura\"`.\n2. **Distributed traces** — AURA exports OpenTelemetry spans to VictoriaTraces via `OTEL_EXPORTER_OTLP_ENDPOINT`. Inspect them in **Explore → VictoriaTraces** with `service=\"aura\"` to see the orchestrator/worker reasoning waterfall, tool calls, and per-step latency."
+      }
+    }
+  ]
+}
