@@ -192,51 +192,64 @@ export const InvestigationConsole: React.FC = () => {
     };
   }, []);
 
-  // Poll an A2A task until it completes, then append the result (or error).
-  const pollTask = useCallback(async (taskId: string, startedAt: number) => {
-    try {
-      const task = await AuraApiClient.getA2aTask(taskId);
-      if (!isMountedRef.current) {
-        return;
-      }
-      const state = task.status.state;
-      if (state === 'completed') {
-        const answer = extractAssistantAnswer(task);
-        const assistantMsg: ChatMessage = {
-          id: generateMessageId(),
-          role: 'assistant',
-          content: answer || '(Investigation completed with no text output.)',
-          timestamp: getCurrentTimestamp(),
-          elapsedMs: getTimestampMs() - startedAt,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-        setInFlight(null);
-        setIsInvestigating(false);
-        setActiveElapsedMs(0);
-      } else if (state === 'failed' || state === 'canceled' || state === 'rejected') {
-        const detail =
-          task.status.message?.parts
-            ?.filter((p) => p.kind === 'text')
-            .map((p) => p.text || '')
-            .join('\n') || `Investigation ${state}.`;
-        const errorMsg: ChatMessage = {
-          id: generateMessageId(),
-          role: 'assistant',
-          content: `🔴 **Investigation Error**: ${detail}`,
-          timestamp: getCurrentTimestamp(),
-          isError: true,
-          elapsedMs: getTimestampMs() - startedAt,
-        };
-        setMessages((prev) => [...prev, errorMsg]);
-        setInFlight(null);
-        setIsInvestigating(false);
-        setActiveElapsedMs(0);
-      }
-      // otherwise still working/submitted/unknown — keep polling
-    } catch {
-      // Transient poll error; keep polling. The task continues server-side.
+  const stopPolling = useCallback(() => {
+    if (pollTimerRef.current) {
+      window.clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
     }
   }, []);
+
+  // Poll an A2A task until it reaches a terminal state, then append the result
+  // (or error) exactly once and stop polling.
+  const pollTask = useCallback(
+    async (taskId: string, startedAt: number) => {
+      try {
+        const task = await AuraApiClient.getA2aTask(taskId);
+        if (!isMountedRef.current) {
+          return;
+        }
+        const state = task.status.state;
+        if (state === 'completed') {
+          stopPolling();
+          const answer = extractAssistantAnswer(task);
+          const assistantMsg: ChatMessage = {
+            id: generateMessageId(),
+            role: 'assistant',
+            content: answer || '(Investigation completed with no text output.)',
+            timestamp: getCurrentTimestamp(),
+            elapsedMs: getTimestampMs() - startedAt,
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+          setInFlight(null);
+          setIsInvestigating(false);
+          setActiveElapsedMs(0);
+        } else if (state === 'failed' || state === 'canceled' || state === 'rejected') {
+          stopPolling();
+          const detail =
+            task.status.message?.parts
+              ?.filter((p) => p.kind === 'text')
+              .map((p) => p.text || '')
+              .join('\n') || `Investigation ${state}.`;
+          const errorMsg: ChatMessage = {
+            id: generateMessageId(),
+            role: 'assistant',
+            content: `🔴 **Investigation Error**: ${detail}`,
+            timestamp: getCurrentTimestamp(),
+            isError: true,
+            elapsedMs: getTimestampMs() - startedAt,
+          };
+          setMessages((prev) => [...prev, errorMsg]);
+          setInFlight(null);
+          setIsInvestigating(false);
+          setActiveElapsedMs(0);
+        }
+        // otherwise still working/submitted/unknown — keep polling
+      } catch {
+        // Transient poll error; keep polling. The task continues server-side.
+      }
+    },
+    [stopPolling]
+  );
 
   const startPolling = useCallback(
     (taskId: string, startedAt: number) => {
@@ -250,13 +263,6 @@ export const InvestigationConsole: React.FC = () => {
     },
     [pollTask]
   );
-
-  const stopPolling = useCallback(() => {
-    if (pollTimerRef.current) {
-      window.clearInterval(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-  }, []);
 
   // Re-attach to a persisted in-flight task on mount (background continuation):
   // if the user navigated away mid-investigation, this resumes polling the same
