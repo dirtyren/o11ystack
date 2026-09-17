@@ -246,7 +246,7 @@ services:
       CUSTOM_OPENAI_BASE_URL: "http://litellm:4000/v1"
       CUSTOM_OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
       CUSTOM_OPENAI_MODEL: ${AURA_MODEL:-aura-sre-model}
-      VICTORIALOGS_URL: "http://victorialogs:9428"
+      VICTORIA_LOGS_URL: "http://victorialogs:9428"
       PROMETHEUS_URL: "http://victoriametrics:8428"
       GRAFANA_INSTANCE_URL: "http://grafana:3000/grafana"
       GRAFANA_READ_TOKEN: ${GRAFANA_SERVICE_ACCOUNT_TOKEN:-}

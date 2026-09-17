@@ -114,6 +114,7 @@ def load_env_integration_services() -> list[str]:
         "grafana",
         _all_env("GRAFANA_INSTANCE_URL", "GRAFANA_READ_TOKEN") or _env_is_set("GRAFANA_INSTANCES"),
     )
+    add("victoria_logs", _env_is_set("VICTORIA_LOGS_URL"))
     add("datadog", _all_env("DD_API_KEY", "DD_APP_KEY") or _env_is_set("DD_INSTANCES"))
     add(
         "groundcover",
