@@ -4,7 +4,15 @@ import { GrafanaTheme2 } from '@grafana/data';
 import { PluginPage } from '@grafana/runtime';
 import { Badge, Button, Icon, Spinner, useStyles2 } from '@grafana/ui';
 import { AuraApiClient } from '../api';
-import { QUICK_PROMPTS } from '../constants';
+import { PLUGIN_ID, QUICK_PROMPTS } from '../constants';
+import {
+  clearSession,
+  INVESTIGATION_STORE_VERSION,
+  InFlightRecord,
+  loadSession,
+  PersistedSession,
+  saveSession,
+} from '../state/investigationStore';
 import { AuraHealthResponse, ChatMessage } from '../types';
 import { NavigationHeader } from '../components/NavigationHeader/NavigationHeader';
 import { LiveTelemetrySidebar } from '../components/LiveTelemetrySidebar/LiveTelemetrySidebar';
@@ -22,6 +30,10 @@ function getNow(): number {
   return performance.now();
 }
 
+function getTimestampMs(): number {
+  return Date.now();
+}
+
 function calculateElapsed(startTime: number): number {
   return Math.round(performance.now() - startTime);
 }
@@ -36,18 +48,50 @@ function formatDuration(ms: number): string {
 export const InvestigationConsole: React.FC = () => {
   const s = useStyles2(getStyles);
 
+  // Persisted investigation session (localStorage), scoped per Grafana org/user/app.
+  const [loadedSession] = useState<PersistedSession | null>(() => loadSession(PLUGIN_ID));
+  const createdAtRef = useRef<number>(loadedSession?.createdAt ?? getTimestampMs());
+  const isMountedRef = useRef<boolean>(true);
+
   // States
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputText, setInputText] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadedSession?.messages ?? []);
+  const [inputText, setInputText] = useState(() => loadedSession?.inputDraft ?? '');
   const [isInvestigating, setIsInvestigating] = useState(false);
   const [health, setHealth] = useState<AuraHealthResponse | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
-  const [activeModel, setActiveModel] = useState<string>('Aura SRE Orchestrator');
+  const [activeModel, setActiveModel] = useState<string>(
+    () => loadedSession?.activeModel || 'Aura SRE Orchestrator'
+  );
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [activeElapsedMs, setActiveElapsedMs] = useState<number>(0);
+  const [inFlight, setInFlight] = useState<InFlightRecord | null>(() => loadedSession?.inFlight ?? null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Track mount state so an investigation that finishes after the user navigates
+  // away does not attempt to update an unmounted component.
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Persist the investigation session whenever any state that matters changes.
+  // Writes synchronously on commit, so navigating away mid-investigation always
+  // leaves the latest state (including an in-flight marker) in storage.
+  useEffect(() => {
+    saveSession(PLUGIN_ID, {
+      schemaVersion: INVESTIGATION_STORE_VERSION,
+      messages,
+      inputDraft: inputText,
+      activeModel,
+      createdAt: createdAtRef.current,
+      updatedAt: Date.now(),
+      inFlight,
+    });
+  }, [messages, inputText, activeModel, inFlight]);
 
   // Live investigation duration timer
   useEffect(() => {
@@ -118,6 +162,58 @@ export const InvestigationConsole: React.FC = () => {
     };
   }, []);
 
+  // Run an investigation to completion for the given full message history. The
+  // triggering prompt is recorded as an in-flight marker so a user who navigates
+  // away mid-investigation can resume on return.
+  const runInvestigation = async (history: ChatMessage[], prompt: string) => {
+    setIsInvestigating(true);
+    setInFlight({ status: 'running', prompt, startedAt: getTimestampMs() });
+
+    const startTime = getNow();
+
+    try {
+      const apiMessages = history.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const reply = await AuraApiClient.sendChat(apiMessages);
+      const elapsedMs = calculateElapsed(startTime);
+
+      const assistantMsg: ChatMessage = {
+        id: generateMessageId(),
+        role: 'assistant',
+        content: reply,
+        timestamp: getCurrentTimestamp(),
+        elapsedMs,
+      };
+
+      if (isMountedRef.current) {
+        setMessages((prev) => [...prev, assistantMsg]);
+      }
+    } catch (err: any) {
+      const elapsedMs = calculateElapsed(startTime);
+      const errorMsg: ChatMessage = {
+        id: generateMessageId(),
+        role: 'assistant',
+        content: `🔴 **Investigation Error**: ${err.message || 'Unable to communicate with AURA Orchestrator. Please check that the AURA container is running.'}`,
+        timestamp: getCurrentTimestamp(),
+        isError: true,
+        elapsedMs,
+      };
+      if (isMountedRef.current) {
+        setMessages((prev) => [...prev, errorMsg]);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsInvestigating(false);
+        setInFlight(null);
+        setActiveElapsedMs(0);
+        setTimeout(() => textareaRef.current?.focus(), 50);
+      }
+    }
+  };
+
   // Send message
   const handleSend = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
@@ -135,48 +231,30 @@ export const InvestigationConsole: React.FC = () => {
     const updatedHistory = [...messages, userMsg];
     setMessages(updatedHistory);
     setInputText('');
-    setIsInvestigating(true);
 
-    const startTime = getNow();
+    await runInvestigation(updatedHistory, text);
+  };
 
-    try {
-      const apiMessages = updatedHistory.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      const reply = await AuraApiClient.sendChat(apiMessages);
-      const elapsedMs = calculateElapsed(startTime);
-
-      const assistantMsg: ChatMessage = {
-        id: generateMessageId(),
-        role: 'assistant',
-        content: reply,
-        timestamp: getCurrentTimestamp(),
-        elapsedMs,
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err: any) {
-      const elapsedMs = calculateElapsed(startTime);
-      const errorMsg: ChatMessage = {
-        id: generateMessageId(),
-        role: 'assistant',
-        content: `🔴 **Investigation Error**: ${err.message || 'Unable to communicate with AURA Orchestrator. Please check that the AURA container is running.'}`,
-        timestamp: getCurrentTimestamp(),
-        isError: true,
-        elapsedMs,
-      };
-      setMessages((prev) => [...prev, errorMsg]);
-    } finally {
-      setIsInvestigating(false);
-      setActiveElapsedMs(0);
-      setTimeout(() => textareaRef.current?.focus(), 50);
+  // Resume an investigation that was in progress when the user navigated away.
+  // The triggering user message is already part of `messages`, so re-run the
+  // completion without appending a duplicate user message.
+  const handleResume = () => {
+    if (!inFlight || isInvestigating) {
+      return;
     }
+    void runInvestigation(messages, inFlight.prompt);
+  };
+
+  const handleDismissResume = () => {
+    setInFlight(null);
   };
 
   const handleClear = () => {
+    clearSession(PLUGIN_ID);
+    createdAtRef.current = Date.now();
     setMessages([]);
+    setInFlight(null);
+    setInputText('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -220,6 +298,34 @@ export const InvestigationConsole: React.FC = () => {
                 </Button>
               </div>
             </div>
+
+            {/* Pending investigation resume banner */}
+            {inFlight && !isInvestigating && (
+              <div className={s.resumeBanner}>
+                <Icon name="exclamation-triangle" className={s.resumeIcon} />
+                <span className={s.resumeText}>
+                  An investigation was in progress when you left this screen. Resume it to continue.
+                </span>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  fill="outline"
+                  icon="play"
+                  onClick={handleResume}
+                >
+                  Resume Investigation
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  fill="outline"
+                  icon="times"
+                  onClick={handleDismissResume}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            )}
 
             {/* Scrollable Message Feed */}
             <div className={s.messagesFeed}>
@@ -442,6 +548,23 @@ const getStyles = (theme: GrafanaTheme2) => ({
     display: flex;
     align-items: center;
     gap: ${theme.spacing(1)};
+  `,
+  resumeBanner: css`
+    display: flex;
+    align-items: center;
+    gap: ${theme.spacing(1.5)};
+    padding: ${theme.spacing(1, 2)};
+    background: rgba(245, 158, 11, 0.1);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+  `,
+  resumeIcon: css`
+    color: #f59e0b;
+    flex-shrink: 0;
+  `,
+  resumeText: css`
+    flex: 1;
+    font-size: 0.85rem;
+    color: ${theme.colors.text.primary};
   `,
   messagesFeed: css`
     flex: 1;

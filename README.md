@@ -197,6 +197,7 @@ AURA is integrated directly into Grafana as a native Application Plugin pre-prov
   - **Quick Triage Chips**: Pre-canned 1-click investigation triggers for Log Triage, CPU/Memory Anomalies, Trace Latency Outliers, Active Alerts, and Full SRE Audits.
   - **Reasoning Traces Integration**: 1-click jump to Grafana Explore with `VictoriaTraces` and `service="aura"` pre-filtered.
   - **Specialist Telemetry Tab**: Real-time status for the 4 specialist workers and 216 live MCP tools.
+  - **💾 Investigation State Persistence**: The console persists conversation and in-progress state to browser `localStorage` (scoped per Grafana user/org), so navigating to dashboards or other screens no longer aborts an investigation — a **Resume Investigation** banner restores it on return.
 
 ### Telemetry & Tracing
 AURA sends its internal execution spans (subagent turns, tool invocations, and reasoning steps) directly to the OpenTelemetry Collector via `OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4317"`. These traces are stored in **VictoriaTraces**, allowing SREs to inspect the AI's step-by-step reasoning within Grafana.

@@ -1,82 +1,82 @@
 {
-  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
-  "type": "app",
-  "name": "OpenSRE AI Agent",
-  "id": "opensre-app",
-  "info": {
-    "keywords": [
-      "ai",
-      "sre",
-      "agent",
-      "opensre",
-      "tracer-cloud",
-      "llm",
-      "victoriametrics",
-      "victorialogs",
-      "grafana"
+    "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+    "type": "app",
+    "name": "OpenSRE AI Agent",
+    "id": "opensre-app",
+    "info": {
+        "keywords": [
+            "ai",
+            "sre",
+            "agent",
+            "opensre",
+            "tracer-cloud",
+            "llm",
+            "victoriametrics",
+            "victorialogs",
+            "grafana"
+        ],
+        "description": "OpenSRE Autonomous AI SRE Agent for incident investigation, telemetry analysis, and root-cause analysis",
+        "author": {
+            "name": "Tracer-Cloud / o11ystack",
+            "url": "https://github.com/Tracer-Cloud/opensre"
+        },
+        "logos": {
+            "small": "img/logo.svg",
+            "large": "img/logo.svg"
+        },
+        "screenshots": [],
+        "version": "1.0.0",
+        "updated": "2026-09-16"
+    },
+    "includes": [
+        {
+            "type": "page",
+            "name": "Investigation Console",
+            "path": "/a/opensre-app/console",
+            "addToNav": true,
+            "defaultNav": true
+        },
+        {
+            "type": "page",
+            "name": "Integrations & Fleet",
+            "path": "/a/opensre-app/integrations",
+            "addToNav": true,
+            "defaultNav": false
+        },
+        {
+            "type": "page",
+            "icon": "cog",
+            "name": "Configuration",
+            "path": "/plugins/opensre-app",
+            "role": "Admin",
+            "addToNav": true
+        }
     ],
-    "description": "OpenSRE Autonomous AI SRE Agent for incident investigation, telemetry analysis, and root-cause analysis",
-    "author": {
-      "name": "Tracer-Cloud / o11ystack",
-      "url": "https://github.com/Tracer-Cloud/opensre"
+    "dependencies": {
+        "grafanaDependency": ">=10.0.0",
+        "plugins": []
     },
-    "logos": {
-      "small": "img/logo.svg",
-      "large": "img/logo.svg"
-    },
-    "screenshots": [],
-    "version": "1.0.0",
-    "updated": "2026-09-16"
-  },
-  "includes": [
-    {
-      "type": "page",
-      "name": "Investigation Console",
-      "path": "/a/opensre-app/console",
-      "addToNav": true,
-      "defaultNav": true
-    },
-    {
-      "type": "page",
-      "name": "Integrations & Fleet",
-      "path": "/a/opensre-app/integrations",
-      "addToNav": true,
-      "defaultNav": false
-    },
-    {
-      "type": "page",
-      "icon": "cog",
-      "name": "Configuration",
-      "path": "/plugins/opensre-app",
-      "role": "Admin",
-      "addToNav": true
-    }
-  ],
-  "dependencies": {
-    "grafanaDependency": ">=10.0.0",
-    "plugins": []
-  },
-  "routes": [
-    {
-      "path": "opensre",
-      "url": "http://opensre:8000",
-      "reqSignedIn": true
-    },
-    {
-      "path": "opensre/health",
-      "url": "http://opensre:8000/health",
-      "reqSignedIn": true
-    },
-    {
-      "path": "opensre/v1/models",
-      "url": "http://opensre:8000/v1/models",
-      "reqSignedIn": true
-    },
-    {
-      "path": "opensre/v1/chat/completions",
-      "url": "http://opensre:8000/v1/chat/completions",
-      "reqSignedIn": true
-    }
-  ],
-  "buildMode": "production"
+    "routes": [
+        {
+            "path": "opensre",
+            "url": "http://opensre:8000",
+            "reqSignedIn": true
+        },
+        {
+            "path": "opensre/health",
+            "url": "http://opensre:8000/health",
+            "reqSignedIn": true
+        },
+        {
+            "path": "opensre/v1/models",
+            "url": "http://opensre:8000/v1/models",
+            "reqSignedIn": true
+        },
+        {
+            "path": "opensre/v1/chat/completions",
+            "url": "http://opensre:8000/v1/chat/completions",
+            "reqSignedIn": true
+        }
+    ],
+    "buildMode": "production"
 }
