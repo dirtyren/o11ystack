@@ -26,6 +26,21 @@ receivers:
           scrape_interval: 15s
           static_configs:
             - targets: ['victoriatraces:10428']
+        - job_name: 'litellm'
+          scrape_interval: 15s
+          authorization:
+            type: Bearer
+            credentials: ${env:LITELLM_MASTER_KEY}
+          static_configs:
+            - targets: ['litellm:4000']
+        - job_name: 'headroom'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['headroom:8787']
+        - job_name: 'opensre'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['opensre:8000']
 
 
   filelog:

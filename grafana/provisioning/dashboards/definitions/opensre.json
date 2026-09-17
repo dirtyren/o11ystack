@@ -1,0 +1,91 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "schemaVersion": 39,
+  "tags": ["opensre", "ai", "sre", "agent"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "OpenSRE — AI SRE Agent",
+  "uid": "opensre",
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Requests / s",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "reqps", "color": {"mode": "thresholds"}}},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "sum(rate(opensre_requests_total[5m]))", "refId": "A", "instant": true}]
+    },
+    {
+      "type": "stat",
+      "title": "Investigations (1h)",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}}},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "sum(increase(opensre_investigations_total[1h]))", "refId": "A", "instant": true}]
+    },
+    {
+      "type": "stat",
+      "title": "In-flight Investigations",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}}},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "opensre_investigations_in_flight", "refId": "A", "instant": true}]
+    },
+    {
+      "type": "stat",
+      "title": "Error Rate (5xx / s)",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "reqps", "color": {"mode": "thresholds"}}},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "sum(rate(opensre_requests_total{status=~\"5..\"}[5m]))", "refId": "A", "instant": true}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests / s by Path",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "targets": [{"expr": "sum by (path) (rate(opensre_requests_total[5m]))", "refId": "A", "legendFormat": "{{path}}"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "p95 Request Latency",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(opensre_request_duration_seconds_bucket[5m])))", "refId": "A", "legendFormat": "p95"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Investigation Rate (per s)",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+      "fieldConfig": {"defaults": {"unit": "short"}},
+      "targets": [{"expr": "rate(opensre_investigations_total[5m])", "refId": "A", "legendFormat": "investigations/s"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "In-flight Investigations Over Time",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+      "fieldConfig": {"defaults": {"unit": "short"}},
+      "targets": [{"expr": "opensre_investigations_in_flight", "refId": "A", "legendFormat": "in-flight"}]
+    }
+  ]
+}
