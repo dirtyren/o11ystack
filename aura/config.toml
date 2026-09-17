@@ -61,6 +61,12 @@ allow_direct_answers = true
 allow_clarification = true
 tools_in_planning = "full"
 
+# Fail fast on transient provider/MCP errors (e.g. LLM 429 rate limits) instead
+# of retrying with backoff — the console offers an explicit Retry button, so the
+# agent must not silently loop on a throttled or failing backend.
+[orchestration.retry]
+max_retries = 0
+
 # ── Specialized Workers ──────────────────────────────────────────────
 
 [orchestration.worker.incident-responder]

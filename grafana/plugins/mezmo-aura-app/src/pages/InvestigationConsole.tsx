@@ -340,6 +340,22 @@ export const InvestigationConsole: React.FC = () => {
     }
   };
 
+  // Re-send the user prompt that preceded a failed investigation. The agent
+  // fails fast on provider/MCP errors, so the user drives the retry explicitly.
+  const handleRetry = (errorMsgId: string) => {
+    if (isInvestigating) {
+      return;
+    }
+    const errorIdx = messages.findIndex((m) => m.id === errorMsgId);
+    const prompt = messages
+      .slice(0, errorIdx)
+      .reverse()
+      .find((m) => m.role === 'user')?.content;
+    if (prompt) {
+      void handleSend(prompt);
+    }
+  };
+
   const handleClear = () => {
     stopPolling();
     clearSession(PLUGIN_ID);
@@ -459,6 +475,19 @@ export const InvestigationConsole: React.FC = () => {
                       </div>
                       {msg.role === 'assistant' && (
                         <div className={s.metaActions}>
+                          {msg.isError && (
+                            <Button
+                              size="xs"
+                              variant="primary"
+                              fill="outline"
+                              icon="play"
+                              onClick={() => handleRetry(msg.id)}
+                              className={s.copyBtn}
+                              disabled={isInvestigating}
+                            >
+                              Retry
+                            </Button>
+                          )}
                           <Button
                             size="xs"
                             variant="secondary"
