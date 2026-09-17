@@ -232,7 +232,7 @@ AURA is integrated directly into Grafana as a first-class **Grafana Application 
    - **Reasoning Traces Tab**: Direct 1-click jump to Grafana Explore with datasource pre-selected to `VictoriaTraces` and filter `service="aura"` to inspect AURA's live OpenTelemetry reasoning waterfall.
    - **MCP Specialists Tab**: Real-time status for the 4 specialist workers (`metrics-analyst`, `log-analyst`, `trace-analyst`, `incident-responder`) and 216 live MCP tools.
    - **App Configuration Tab**: View and verify backend proxy settings and connection health.
-   - **💾 Investigation State Persistence**: The console persists the conversation, draft input, and in-progress state to browser `localStorage` (scoped per Grafana user/org). Navigating to another page — another AURA tab, a dashboard, or Explore — no longer aborts the investigation. If you leave mid-investigation, a **Resume Investigation** banner appears on return so you can continue the run.
+   - **💾 Background Investigation Persistence**: The console runs investigations as server-side A2A tasks and persists the conversation + task id to browser `localStorage` (scoped per Grafana user/org). Navigating to another page — another AURA tab, a dashboard, or Explore — no longer aborts the investigation: the run continues in the background, and on return the console shows it as **in progress** or **completed** (no re-run).
    - **Secure Internal Proxy**: Requests are routed through Grafana's backend plugin proxy directly to `http://aura:8080`, inheriting the operator's Grafana authentication.
 
 ---

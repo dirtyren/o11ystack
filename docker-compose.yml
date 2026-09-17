@@ -198,6 +198,7 @@ services:
       - ./aura
       - webserver
       - --verbose
+      - --enable-a2a
     environment:
       HOST: "0.0.0.0"
       PORT: "8080"
