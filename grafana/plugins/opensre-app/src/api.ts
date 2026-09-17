@@ -1,6 +1,6 @@
 import { getBackendSrv } from '@grafana/runtime';
 import { lastValueFrom } from 'rxjs';
-import { OpenSreHealthResponse, OpenSreModel } from './types';
+import { A2aJsonRpcResponse, A2aTask, OpenSreHealthResponse, OpenSreModel } from './types';
 import { PLUGIN_ID } from './constants';
 
 export class OpenSreApiClient {
@@ -111,6 +111,64 @@ export class OpenSreApiClient {
         'Error communicating with OpenSRE Agent';
       throw new Error(errMsg);
     }
+  }
+
+  /**
+   * Issue a JSON-RPC call to the OpenSRE A2A binding (served at the server
+   * root `/`), returning the parsed `result` payload or throwing on `error`.
+   */
+  private static async a2aJsonRpc<T>(method: string, params: unknown): Promise<T> {
+    const url = this.getProxyUrl('', undefined);
+    const response = await lastValueFrom(
+      getBackendSrv().fetch<A2aJsonRpcResponse<T>>({
+        url,
+        method: 'POST',
+        data: {
+          jsonrpc: '2.0',
+          id: `${method.replace('/', '-')}-${Date.now()}`,
+          method,
+          params,
+        },
+      })
+    );
+
+    const payload = response.data;
+    if (payload?.error) {
+      throw new Error(payload.error.message || `A2A ${method} failed`);
+    }
+    if (!payload?.result) {
+      throw new Error(`A2A ${method} returned no result`);
+    }
+    return payload.result;
+  }
+
+  /**
+   * Submit a user message to OpenSRE as an A2A task. The server returns
+   * immediately with a task in `working` state; the investigation continues
+   * server-side and is polled via `getA2aTask`. Passing `contextId` continues
+   * an existing conversation.
+   */
+  static async sendA2aMessage(opts: {
+    messageId: string;
+    text: string;
+    contextId?: string | null;
+  }): Promise<A2aTask> {
+    return this.a2aJsonRpc<A2aTask>('message/send', {
+      message: {
+        messageId: opts.messageId,
+        role: 'user',
+        parts: [{ kind: 'text', text: opts.text }],
+        ...(opts.contextId ? { contextId: opts.contextId } : {}),
+      },
+      configuration: {
+        acceptedOutputModes: ['text/plain'],
+      },
+    });
+  }
+
+  /** Fetch an A2A task by id to check its completion status and result. */
+  static async getA2aTask(taskId: string): Promise<A2aTask> {
+    return this.a2aJsonRpc<A2aTask>('tasks/get', { id: taskId });
   }
 }
 
