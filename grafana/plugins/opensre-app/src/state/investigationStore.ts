@@ -17,6 +17,10 @@ export const INVESTIGATION_STORE_VERSION = 1;
 
 export interface InFlightRecord {
   status: 'running';
+  /** A2A task id — used to poll `tasks/get` and re-attach after navigation. */
+  taskId: string;
+  /** A2A conversation context id (thread), reused across turns. */
+  contextId: string;
   /** The user prompt that triggered the in-flight investigation. */
   prompt: string;
   startedAt: number;
@@ -27,6 +31,8 @@ export interface PersistedSession {
   messages: ChatMessage[];
   inputDraft: string;
   activeModel: string;
+  /** A2A conversation context id, persisted across turns for multi-turn chat. */
+  contextId: string | null;
   createdAt: number;
   updatedAt: number;
   inFlight: InFlightRecord | null;
@@ -90,6 +96,7 @@ export function createEmptySession(): PersistedSession {
     messages: [],
     inputDraft: '',
     activeModel: '',
+    contextId: null,
     createdAt: now,
     updatedAt: now,
     inFlight: null,

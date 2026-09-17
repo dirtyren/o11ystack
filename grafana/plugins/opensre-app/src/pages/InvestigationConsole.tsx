@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
 import { PluginPage } from '@grafana/runtime';
@@ -13,7 +13,7 @@ import {
   PersistedSession,
   saveSession,
 } from '../state/investigationStore';
-import { AuraHealthResponse, ChatMessage } from '../types';
+import { A2aTask, AuraHealthResponse, ChatMessage } from '../types';
 import { NavigationHeader } from '../components/NavigationHeader/NavigationHeader';
 import { LiveTelemetrySidebar } from '../components/LiveTelemetrySidebar/LiveTelemetrySidebar';
 import { MarkdownRenderer } from '../components/MarkdownRenderer/MarkdownRenderer';
@@ -26,16 +26,40 @@ function getCurrentTimestamp(): string {
   return new Date().toLocaleTimeString();
 }
 
-function getNow(): number {
-  return performance.now();
-}
-
 function getTimestampMs(): number {
   return Date.now();
 }
 
-function calculateElapsed(startTime: number): number {
-  return Math.round(performance.now() - startTime);
+// Extract the final assistant answer from a completed A2A task. AURA streams
+// the reply as artifacts and records only the prompt in `history`; the complete
+// answer lives in the artifact with `artifactId === "final"`.
+function extractAssistantAnswer(task: A2aTask): string {
+  const finalArtifact = task.artifacts?.find((a) => a.artifactId === 'final');
+  if (finalArtifact) {
+    const text = finalArtifact.parts
+      .filter((p) => p.kind === 'text')
+      .map((p) => p.text || '')
+      .join('\n');
+    if (text) {
+      return text;
+    }
+  }
+  const anyArtifactText = task.artifacts
+    ?.flatMap((a) => a.parts)
+    .filter((p) => p.kind === 'text')
+    .map((p) => p.text || '')
+    .join('\n');
+  if (anyArtifactText) {
+    return anyArtifactText;
+  }
+  const agentMsg = [...(task.history ?? [])].reverse().find((m) => m.role === 'agent');
+  if (agentMsg) {
+    return agentMsg.parts
+      .filter((p) => p.kind === 'text')
+      .map((p) => p.text || '')
+      .join('\n');
+  }
+  return '';
 }
 
 function formatDuration(ms: number): string {
@@ -56,16 +80,20 @@ export const InvestigationConsole: React.FC = () => {
   // States
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadedSession?.messages ?? []);
   const [inputText, setInputText] = useState(() => loadedSession?.inputDraft ?? '');
-  const [isInvestigating, setIsInvestigating] = useState(false);
+  const [isInvestigating, setIsInvestigating] = useState<boolean>(() => !!loadedSession?.inFlight);
   const [health, setHealth] = useState<AuraHealthResponse | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
-  const [activeModel, setActiveModel] = useState<string>(() => loadedSession?.activeModel || 'aura-sre-model');
+  const [activeModel, setActiveModel] = useState<string>(
+    () => loadedSession?.activeModel || 'aura-sre-model'
+  );
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [activeElapsedMs, setActiveElapsedMs] = useState<number>(0);
   const [inFlight, setInFlight] = useState<InFlightRecord | null>(() => loadedSession?.inFlight ?? null);
+  const [contextId, setContextId] = useState<string | null>(() => loadedSession?.contextId ?? null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pollTimerRef = useRef<number | null>(null);
 
   // Track mount state so an investigation that finishes after the user navigates
   // away does not attempt to update an unmounted component.
@@ -85,26 +113,30 @@ export const InvestigationConsole: React.FC = () => {
       messages,
       inputDraft: inputText,
       activeModel,
+      contextId,
       createdAt: createdAtRef.current,
       updatedAt: Date.now(),
       inFlight,
     });
-  }, [messages, inputText, activeModel, inFlight]);
+  }, [messages, inputText, activeModel, contextId, inFlight]);
 
-  // Live investigation duration timer
+  // Live investigation duration timer, computed from the in-flight task's
+  // startedAt so it remains correct after re-attaching to a background task.
   useEffect(() => {
     if (!isInvestigating) {
       return;
     }
-    const start = getNow();
-    const timer = setInterval(() => {
-      setActiveElapsedMs(calculateElapsed(start));
-    }, 100);
+    const startedAt = inFlight?.startedAt ?? getTimestampMs();
+    const tick = () => {
+      setActiveElapsedMs(getTimestampMs() - startedAt);
+    };
+    tick();
+    const timer = setInterval(tick, 500);
 
     return () => {
       clearInterval(timer);
     };
-  }, [isInvestigating]);
+  }, [isInvestigating, inFlight?.startedAt]);
 
   const handleCopyMessage = (id: string, content: string) => {
     navigator.clipboard.writeText(content);
@@ -160,57 +192,98 @@ export const InvestigationConsole: React.FC = () => {
     };
   }, []);
 
-  // Run an investigation to completion for the given full message history. The
-  // triggering prompt is recorded as an in-flight marker so a user who navigates
-  // away mid-investigation can resume on return.
-  const runInvestigation = async (history: ChatMessage[], prompt: string) => {
-    setIsInvestigating(true);
-    setInFlight({ status: 'running', prompt, startedAt: getTimestampMs() });
-
-    const startTime = getNow();
-
-    try {
-      const apiMessages = history.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      const reply = await AuraApiClient.sendChat(apiMessages);
-      const elapsedMs = calculateElapsed(startTime);
-
-      const assistantMsg: ChatMessage = {
-        id: generateMessageId(),
-        role: 'assistant',
-        content: reply,
-        timestamp: getCurrentTimestamp(),
-        elapsedMs,
-      };
-
-      if (isMountedRef.current) {
-        setMessages((prev) => [...prev, assistantMsg]);
-      }
-    } catch (err: any) {
-      const elapsedMs = calculateElapsed(startTime);
-      const errorMsg: ChatMessage = {
-        id: generateMessageId(),
-        role: 'assistant',
-        content: `🔴 **Investigation Error**: ${err.message || 'Unable to communicate with OpenSRE Agent. Please check that the OpenSRE container is running.'}`,
-        timestamp: getCurrentTimestamp(),
-        isError: true,
-        elapsedMs,
-      };
-      if (isMountedRef.current) {
-        setMessages((prev) => [...prev, errorMsg]);
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsInvestigating(false);
-        setInFlight(null);
-        setActiveElapsedMs(0);
-        setTimeout(() => textareaRef.current?.focus(), 50);
-      }
+  const stopPolling = useCallback(() => {
+    if (pollTimerRef.current) {
+      window.clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
     }
-  };
+  }, []);
+
+  // Poll an A2A task until it reaches a terminal state, then append the result
+  // (or error) exactly once and stop polling.
+  const pollTask = useCallback(
+    async (taskId: string, startedAt: number) => {
+      try {
+        const task = await AuraApiClient.getA2aTask(taskId);
+        if (!isMountedRef.current) {
+          return;
+        }
+        const state = task.status.state;
+        if (state === 'completed') {
+          stopPolling();
+          const answer = extractAssistantAnswer(task);
+          const assistantMsg: ChatMessage = {
+            id: generateMessageId(),
+            role: 'assistant',
+            content: answer || '(Investigation completed with no text output.)',
+            timestamp: getCurrentTimestamp(),
+            elapsedMs: getTimestampMs() - startedAt,
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+          setInFlight(null);
+          setIsInvestigating(false);
+          setActiveElapsedMs(0);
+        } else if (state === 'failed' || state === 'canceled' || state === 'rejected') {
+          stopPolling();
+          const detail =
+            task.status.message?.parts
+              ?.filter((p) => p.kind === 'text')
+              .map((p) => p.text || '')
+              .join('\n') || `Investigation ${state}.`;
+          const errorMsg: ChatMessage = {
+            id: generateMessageId(),
+            role: 'assistant',
+            content: `🔴 **Investigation Error**: ${detail}`,
+            timestamp: getCurrentTimestamp(),
+            isError: true,
+            elapsedMs: getTimestampMs() - startedAt,
+          };
+          setMessages((prev) => [...prev, errorMsg]);
+          setInFlight(null);
+          setIsInvestigating(false);
+          setActiveElapsedMs(0);
+        }
+        // otherwise still working/submitted/unknown — keep polling
+      } catch {
+        // Transient poll error; keep polling. The task continues server-side.
+      }
+    },
+    [stopPolling]
+  );
+
+  const startPolling = useCallback(
+    (taskId: string, startedAt: number) => {
+      if (pollTimerRef.current) {
+        window.clearInterval(pollTimerRef.current);
+      }
+      void pollTask(taskId, startedAt);
+      pollTimerRef.current = window.setInterval(() => {
+        void pollTask(taskId, startedAt);
+      }, 2500);
+    },
+    [pollTask]
+  );
+
+  // Re-attach to a persisted in-flight task on mount (background continuation):
+  // if the user navigated away mid-investigation, this resumes polling the same
+  // task so it shows as "in progress" or "completed" instead of re-running.
+  useEffect(() => {
+    const persisted = loadedSession?.inFlight;
+    if (!persisted) {
+      return;
+    }
+    // Defer so the effect body does not call setState synchronously (pollTask
+    // updates state after its async fetch resolves).
+    const initialTimer = window.setTimeout(() => {
+      startPolling(persisted.taskId, persisted.startedAt);
+    }, 0);
+    return () => {
+      window.clearTimeout(initialTimer);
+      stopPolling();
+    };
+    // Run once on mount; startPolling/stopPolling are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Send message
   const handleSend = async (textToSend?: string) => {
@@ -226,33 +299,79 @@ export const InvestigationConsole: React.FC = () => {
       timestamp: getCurrentTimestamp(),
     };
 
-    const updatedHistory = [...messages, userMsg];
-    setMessages(updatedHistory);
+    setMessages((prev) => [...prev, userMsg]);
     setInputText('');
+    setIsInvestigating(true);
 
-    await runInvestigation(updatedHistory, text);
+    const startedAt = getTimestampMs();
+
+    try {
+      const task = await AuraApiClient.sendA2aMessage({
+        messageId: userMsg.id,
+        text,
+        contextId,
+      });
+      if (!isMountedRef.current) {
+        return;
+      }
+      const taskId = task.id;
+      const taskContextId = task.contextId;
+      if (taskContextId) {
+        setContextId(taskContextId);
+      }
+      setInFlight({
+        status: 'running',
+        taskId,
+        contextId: taskContextId,
+        prompt: text,
+        startedAt,
+      });
+      startPolling(taskId, startedAt);
+    } catch (err: any) {
+      if (!isMountedRef.current) {
+        return;
+      }
+      const errorMsg: ChatMessage = {
+        id: generateMessageId(),
+        role: 'assistant',
+        content: `🔴 **Investigation Error**: ${err.message || 'Unable to start the OpenSRE investigation.'}`,
+        timestamp: getCurrentTimestamp(),
+        isError: true,
+        elapsedMs: getTimestampMs() - startedAt,
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+      setIsInvestigating(false);
+      setInFlight(null);
+      setActiveElapsedMs(0);
+    }
   };
 
-  // Resume an investigation that was in progress when the user navigated away.
-  // The triggering user message is already part of `messages`, so re-run the
-  // completion without appending a duplicate user message.
-  const handleResume = () => {
-    if (!inFlight || isInvestigating) {
+  // Re-send the user prompt that preceded a failed investigation. The agent
+  // fails fast on provider/MCP errors, so the user drives the retry explicitly.
+  const handleRetry = (errorMsgId: string) => {
+    if (isInvestigating) {
       return;
     }
-    void runInvestigation(messages, inFlight.prompt);
-  };
-
-  const handleDismissResume = () => {
-    setInFlight(null);
+    const errorIdx = messages.findIndex((m) => m.id === errorMsgId);
+    const prompt = messages
+      .slice(0, errorIdx)
+      .reverse()
+      .find((m) => m.role === 'user')?.content;
+    if (prompt) {
+      void handleSend(prompt);
+    }
   };
 
   const handleClear = () => {
+    stopPolling();
     clearSession(PLUGIN_ID);
-    createdAtRef.current = Date.now();
+    createdAtRef.current = getTimestampMs();
     setMessages([]);
     setInFlight(null);
+    setContextId(null);
     setInputText('');
+    setIsInvestigating(false);
+    setActiveElapsedMs(0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -296,34 +415,6 @@ export const InvestigationConsole: React.FC = () => {
                 </Button>
               </div>
             </div>
-
-            {/* Pending investigation resume banner */}
-            {inFlight && !isInvestigating && (
-              <div className={s.resumeBanner}>
-                <Icon name="exclamation-triangle" className={s.resumeIcon} />
-                <span className={s.resumeText}>
-                  An investigation was in progress when you left this screen. Resume it to continue.
-                </span>
-                <Button
-                  size="sm"
-                  variant="primary"
-                  fill="outline"
-                  icon="play"
-                  onClick={handleResume}
-                >
-                  Resume Investigation
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  fill="outline"
-                  icon="times"
-                  onClick={handleDismissResume}
-                >
-                  Dismiss
-                </Button>
-              </div>
-            )}
 
             {/* Scrollable Message Feed */}
             <div className={s.messagesFeed}>
@@ -390,6 +481,19 @@ export const InvestigationConsole: React.FC = () => {
                       </div>
                       {msg.role === 'assistant' && (
                         <div className={s.metaActions}>
+                          {msg.isError && (
+                            <Button
+                              size="xs"
+                              variant="primary"
+                              fill="outline"
+                              icon="play"
+                              onClick={() => handleRetry(msg.id)}
+                              className={s.copyBtn}
+                              disabled={isInvestigating}
+                            >
+                              Retry
+                            </Button>
+                          )}
                           <Button
                             size="xs"
                             variant="secondary"
@@ -546,23 +650,6 @@ const getStyles = (theme: GrafanaTheme2) => ({
     display: flex;
     align-items: center;
     gap: ${theme.spacing(1)};
-  `,
-  resumeBanner: css`
-    display: flex;
-    align-items: center;
-    gap: ${theme.spacing(1.5)};
-    padding: ${theme.spacing(1, 2)};
-    background: rgba(245, 158, 11, 0.1);
-    border-bottom: 1px solid rgba(245, 158, 11, 0.3);
-  `,
-  resumeIcon: css`
-    color: #f59e0b;
-    flex-shrink: 0;
-  `,
-  resumeText: css`
-    flex: 1;
-    font-size: 0.85rem;
-    color: ${theme.colors.text.primary};
   `,
   messagesFeed: css`
     flex: 1;
