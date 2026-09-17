@@ -38,6 +38,12 @@ INVESTIGATION TIME WINDOW POLICY (MANDATORY)
 TOOL EXECUTION SAFEGUARDS
 - VictoriaTraces Query Bounds: When querying VictoriaTraces for distributed traces, always supply restrictive parameters (e.g., limit: 20 or less, minDuration: '200ms', and tight time ranges <= 5m) to prevent context overflows.
 - Grafana Datasource Health: When invoking `grafana-check_datasources_health`, always explicitly pass `uids: []` (empty array) instead of omitting or passing null.
+
+HEADROOM CONTEXT COMPRESSION POLICY (MANDATORY)
+- Compress large tool outputs with `headroom_compress` before reasoning over them (long log batches, wide metric result sets, trace spans, dashboard JSON, file contents). Never truncate or drop data when you can compress it instead.
+- Retrieve full detail on demand with `headroom_retrieve` using the hash returned by `headroom_compress`.
+- In every worker delegation, explicitly instruct workers to compress large outputs with `headroom_compress` before analysis.
+- At the end of an investigation, call `headroom_stats` to report tokens saved and estimated cost savings.
 """
 turn_depth = 15
 
@@ -79,6 +85,8 @@ When invoking `grafana-check_datasources_health`, always explicitly pass `uids: 
 instead of omitting the parameter or passing null to check all datasources reliably. \
 TIME WINDOW POLICY: Unless the user explicitly specifies a longer period, ALWAYS restrict your inspection \
 of active alerts, datasource states, and dashboard queries to the last 5 minutes.
+HEADROOM COMPRESSION: Compress large dashboard/alert/datasource outputs with `headroom_compress` before \
+analysis; use `headroom_retrieve` (with the returned hash) to expand specific items when full detail is needed.
 """
 
 [orchestration.worker.metrics-analyst]
@@ -90,6 +98,8 @@ analyze CPU/memory/network metrics, and detect anomalies. Always use tools to ge
 TIME WINDOW POLICY: Unless the user explicitly requests a longer period, ALWAYS query metrics strictly \
 over the last 5 minutes of telemetry data (e.g., PromQL range queries with start=now-5m, \
 rate intervals such as `rate(...[5m])`, or instant vectors comparing now vs 5m ago).
+HEADROOM COMPRESSION: Compress large PromQL result sets with `headroom_compress` before analysis; \
+use `headroom_retrieve` (with the returned hash) to expand specific series or values when full detail is needed.
 """
 
 [orchestration.worker.log-analyst]
@@ -101,6 +111,8 @@ and correlate logs across services. Always verify with actual log entries. \
 TIME WINDOW POLICY: Unless the user explicitly requests a longer period, ALWAYS scope your LogSQL \
 queries to the last 5 minutes of log entries using `_time:5m` (e.g., `_time:5m AND (level:error OR panic)`) \
 or timestamp filters bounded to the last 5 minutes.
+HEADROOM COMPRESSION: Compress large log batches with `headroom_compress` before analysis; \
+use `headroom_retrieve` (with the returned hash) to expand specific log entries when full detail is needed.
 """
 
 [orchestration.worker.trace-analyst]
@@ -113,6 +125,8 @@ TIME WINDOW & QUERY BOUNDS POLICY:
 - Default Lookback: Unless the user explicitly requests a longer period, ALWAYS scope distributed trace queries to the last 5 minutes (`lookback: 300000` ms / 5m, or time window `now-5m` to `now`).
 - Supply a restrictive `limit` (e.g. limit: 20 or less).
 - Supply `minDuration` (e.g. minDuration: "200ms") to filter out fast operations and locate latency bottlenecks.
+HEADROOM COMPRESSION: Compress large span lists or trace dumps with `headroom_compress` before analysis; \
+use `headroom_retrieve` (with the returned hash) to expand specific spans when full detail is needed.
 """
 
 # ── Model Context Protocol (MCP) Servers ─────────────────────────────
