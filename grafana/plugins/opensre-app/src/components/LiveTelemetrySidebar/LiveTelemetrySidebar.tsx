@@ -126,7 +126,7 @@ export const LiveTelemetrySidebar: React.FC<Props> = ({ health, latencyMs }) => 
       {/* Terminal & API Shortcuts */}
       <div className={s.card}>
         <div className={s.cardHeader}>
-          <Icon name="terminal" className={s.iconBlue} />
+          <Icon name="code-branch" className={s.iconBlue} />
           <span className={s.cardTitle}>Developer CLI &amp; API</span>
         </div>
         <div className={s.btnGroupVertical}>

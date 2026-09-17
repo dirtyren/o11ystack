@@ -14,7 +14,7 @@ function App(props: AppRootProps) {
       <Routes>
         <Route path={ROUTES.Console} element={<InvestigationConsole />} />
         <Route path={ROUTES.Traces} element={<InvestigationTraces />} />
-        <Route path={ROUTES.Specialists} element={<McpSpecialists />} />
+        <Route path={ROUTES.Integrations} element={<McpSpecialists />} />
         <Route path="*" element={<InvestigationConsole />} />
       </Routes>
     </Suspense>

@@ -35,7 +35,7 @@ export const AppConfig = ({ plugin }: AppConfigProps) => {
       const res = await AuraApiClient.getHealth(apiUrl || undefined);
       setTestResult({
         ok: true,
-        message: `Successfully connected to Mezmo AURA Orchestrator (v${res.data.aura_version || '0.2.17'}). Status: ${res.data.status.toUpperCase()}`,
+        message: `Successfully connected to OpenSRE Agent (v${res.data.version || '0.2.17'}). Status: ${res.data.status.toUpperCase()}`,
         latencyMs: res.latencyMs,
         health: res.data,
       });

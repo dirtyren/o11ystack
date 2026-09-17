@@ -88,7 +88,7 @@ export const McpSpecialists: React.FC = () => {
           {/* SRE Investigation Philosophy */}
           <div className={s.policyCard}>
             <div className={s.policyHeader}>
-              <Icon name="shield-check" className={s.iconCyan} />
+              <Icon name="check-circle" className={s.iconCyan} />
               <h3 className={s.policyTitle}>OpenSRE Investigation &amp; Blast Radius Philosophy</h3>
             </div>
             <p className={s.policyText}>
@@ -321,3 +321,5 @@ const getStyles = (theme: GrafanaTheme2) => ({
     line-height: 1.4;
   `,
 });
+
+export default McpSpecialists;
