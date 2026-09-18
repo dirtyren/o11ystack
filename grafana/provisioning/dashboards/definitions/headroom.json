@@ -1,107 +1,194 @@
 {
-  "annotations": {
-    "list": []
-  },
+  "annotations": {"list": []},
   "editable": true,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "schemaVersion": 39,
   "tags": ["headroom", "ai", "compression", "llm"],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-1h",
-    "to": "now"
-  },
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
   "timezone": "browser",
   "title": "Headroom — Context Compression",
   "uid": "headroom",
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "panels": [
     {
-      "type": "stat",
-      "title": "Runtime Tokens Saved",
-      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
-      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
-      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}}},
-      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
-      "targets": [{"expr": "headroom_tokens_saved_total", "refId": "A", "instant": true}]
+      "id": 100,
+      "type": "text",
+      "title": "How to read this dashboard",
+      "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
+      "options": {"mode": "markdown", "content": "**Agent usage** (row 2) counts Headroom tool calls made by agents through the **LiteLLM MCP gateway** — the live integration path (`agent → litellm:4000 → headroom-mcp`).\n**Proxy** panels read Headroom's native Prometheus counters; they only move when **LLM requests are routed *through* the Headroom proxy**, which this stack does not do (agents call the MCP tools instead), so they legitimately stay at 0.\nToken savings from MCP compression are reported by the `headroom_stats` tool output, not exported to Prometheus."}
     },
     {
-      "type": "stat",
-      "title": "Lifetime Tokens Saved",
-      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
-      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
-      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}}},
-      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
-      "targets": [{"expr": "headroom_persistent_savings_tokens_saved_total", "refId": "A", "instant": true}]
+      "id": 1,
+      "type": "row",
+      "title": "Agent usage — Headroom via LiteLLM MCP gateway",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 4},
+      "panels": []
     },
     {
+      "id": 2,
       "type": "stat",
-      "title": "Total Requests",
+      "title": "Compress calls (24h)",
+      "description": "headroom_compress tool calls made through the LiteLLM MCP gateway in the last 24h. Source: litellm_mcp_tool_calls_total{mcp_server_name=\"headroom\"}.",
       "datasource": {"type": "prometheus", "uid": "victoriametrics"},
-      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
-      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}}},
-      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
-      "targets": [{"expr": "headroom_requests_total", "refId": "A", "instant": true}]
+      "gridPos": {"h": 5, "w": 8, "x": 0, "y": 5},
+      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "sum(increase(litellm_mcp_tool_calls_total{mcp_server_name=\"headroom\",mcp_tool_name=\"headroom_compress\"}[24h])) or vector(0)", "refId": "A", "instant": true}]
     },
     {
+      "id": 3,
       "type": "stat",
-      "title": "Failed Requests",
+      "title": "All headroom tool calls (24h)",
+      "description": "All headroom MCP tool calls (compress, retrieve, stats) through the gateway in the last 24h.",
       "datasource": {"type": "prometheus", "uid": "victoriametrics"},
-      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0},
-      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}}},
-      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
-      "targets": [{"expr": "headroom_requests_failed_total", "refId": "A", "instant": true}]
+      "gridPos": {"h": 5, "w": 8, "x": 8, "y": 5},
+      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "sum(increase(litellm_mcp_tool_calls_total{mcp_server_name=\"headroom\"}[24h])) or vector(0)", "refId": "A", "instant": true}]
     },
     {
+      "id": 4,
+      "type": "stat",
+      "title": "Mean headroom MCP call latency",
+      "description": "End-to-end latency of headroom tool calls as measured by the LiteLLM gateway (all headroom tools, 5m window).",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 5, "w": 8, "x": 16, "y": 5},
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 2}},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "sum(rate(litellm_request_total_latency_metric_sum{model=~\"MCP: headroom.*\"}[5m])) / clamp_min(sum(rate(litellm_request_total_latency_metric_count{model=~\"MCP: headroom.*\"}[5m])), 1e-9)", "refId": "A", "instant": true}]
+    },
+    {
+      "id": 5,
       "type": "timeseries",
-      "title": "Request Rate (req/s)",
+      "title": "Headroom MCP call rate (by tool, 5m)",
+      "description": "Tool invocations per second of headroom tools via the gateway, split by tool name.",
       "datasource": {"type": "prometheus", "uid": "victoriametrics"},
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 10},
       "fieldConfig": {"defaults": {"unit": "reqps"}},
-      "targets": [{"expr": "rate(headroom_requests_total[5m])", "refId": "A", "legendFormat": "requests/s"}]
+      "targets": [{"expr": "sum by (mcp_tool_name) (rate(litellm_mcp_tool_calls_total{mcp_server_name=\"headroom\"}[5m]))", "refId": "A", "legendFormat": "{{mcp_tool_name}}"}]
     },
     {
-      "type": "timeseries",
-      "title": "Tokens Saved Rate (tokens/s)",
+      "id": 10,
+      "type": "row",
+      "title": "Proxy liveness & traffic",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18},
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Scrape up (job=headroom)",
+      "description": "1 = the OTel Collector is successfully scraping headroom:8787/metrics.",
       "datasource": {"type": "prometheus", "uid": "victoriametrics"},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 19},
+      "fieldConfig": {"defaults": {"unit": "short", "mappings": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red", "index": 0}, "1": {"text": "UP", "color": "green", "index": 1}}}], "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "up{job=\"headroom\"}", "refId": "A", "instant": true}]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Active inbound requests",
+      "description": "In-flight HTTP requests accepted by the headroom proxy.",
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 19},
       "fieldConfig": {"defaults": {"unit": "short"}},
-      "targets": [{"expr": "rate(headroom_tokens_saved_total[5m])", "refId": "A", "legendFormat": "tokens saved/s"}]
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"expr": "headroom_inbound_requests_active", "refId": "A", "instant": true}]
     },
     {
+      "id": 13,
       "type": "timeseries",
-      "title": "Mean Request Latency (ms)",
+      "title": "Proxy inbound request rate (all HTTP, incl. scrapes/healthchecks)",
+      "description": "All inbound HTTP requests to headroom:8787 — includes OTel scrapes, healthchecks and MCP-driven calls. Baseline traffic here is scrapes + healthchecks (~2 requests / 15s).",
       "datasource": {"type": "prometheus", "uid": "victoriametrics"},
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
-      "fieldConfig": {"defaults": {"unit": "ms"}},
-      "targets": [{"expr": "rate(headroom_latency_ms_sum[5m]) / rate(headroom_latency_ms_count[5m])", "refId": "A", "legendFormat": "mean latency"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "Mean Compression Overhead (ms)",
-      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
-      "fieldConfig": {"defaults": {"unit": "ms"}},
-      "targets": [{"expr": "rate(headroom_overhead_ms_sum[5m]) / rate(headroom_overhead_ms_count[5m])", "refId": "A", "legendFormat": "mean overhead"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "Semantic Cache Hit Rate",
-      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
-      "fieldConfig": {"defaults": {"unit": "percentunit"}},
-      "targets": [{"expr": "sum(rate(headroom_requests_cached_total[5m])) / sum(rate(headroom_requests_total[5m]))", "refId": "A", "legendFormat": "cache hit rate"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "Failed Request Rate (req/s)",
-      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+      "gridPos": {"h": 5, "w": 12, "x": 12, "y": 19},
       "fieldConfig": {"defaults": {"unit": "reqps"}},
-      "targets": [{"expr": "rate(headroom_requests_failed_total[5m])", "refId": "A", "legendFormat": "failed/s"}]
+      "targets": [{"expr": "rate(headroom_inbound_requests_total[5m])", "refId": "A", "legendFormat": "inbound req/s"}]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Native proxy compression pipeline (dormant unless LLM traffic is routed through the proxy)",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 24},
+      "panels": [
+        {
+          "id": 21,
+          "type": "stat",
+          "title": "Runtime tokens saved (proxy)",
+          "description": "Proxy-native counter — only moves when LLM requests are routed THROUGH the Headroom proxy (proxy mode). MCP compression is not counted here.",
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "gridPos": {"h": 5, "w": 8, "x": 0, "y": 25},
+          "fieldConfig": {"defaults": {"unit": "short"}},
+          "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "headroom_tokens_saved_total", "refId": "A", "instant": true}]
+        },
+        {
+          "id": 22,
+          "type": "stat",
+          "title": "Lifetime tokens saved (proxy)",
+          "description": "Durable lifetime counter from the proxy savings tracker — proxy-mode requests only.",
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "gridPos": {"h": 5, "w": 8, "x": 8, "y": 25},
+          "fieldConfig": {"defaults": {"unit": "short"}},
+          "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "headroom_persistent_savings_tokens_saved_total", "refId": "A", "instant": true}]
+        },
+        {
+          "id": 23,
+          "type": "stat",
+          "title": "Proxy requests (24h)",
+          "description": "LLM requests handled by the proxy in the last 24h (proxy mode only).",
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "gridPos": {"h": 5, "w": 8, "x": 16, "y": 25},
+          "fieldConfig": {"defaults": {"unit": "short"}},
+          "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "sum(increase(headroom_requests_total[24h])) or vector(0)", "refId": "A", "instant": true}]
+        },
+        {
+          "id": 24,
+          "type": "timeseries",
+          "title": "Proxy request rate (req/s)",
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 30},
+          "fieldConfig": {"defaults": {"unit": "reqps"}},
+          "targets": [{"expr": "rate(headroom_requests_total[5m])", "refId": "A", "legendFormat": "requests/s"}]
+        },
+        {
+          "id": 25,
+          "type": "timeseries",
+          "title": "Mean request latency (ms)",
+          "description": "Uses the OTel-normalized series names that land in VictoriaMetrics (…_sum_total / …_count_total).",
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 30},
+          "fieldConfig": {"defaults": {"unit": "ms"}},
+          "targets": [{"expr": "rate(headroom_latency_ms_sum_total[5m]) / clamp_min(rate(headroom_latency_ms_count_total[5m]), 1e-9)", "refId": "A", "legendFormat": "mean latency"}]
+        },
+        {
+          "id": 26,
+          "type": "timeseries",
+          "title": "Mean compression overhead (ms)",
+          "description": "Uses the OTel-normalized series names that land in VictoriaMetrics (…_sum_total / …_count_total).",
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 38},
+          "fieldConfig": {"defaults": {"unit": "ms"}},
+          "targets": [{"expr": "rate(headroom_overhead_ms_sum_total[5m]) / clamp_min(rate(headroom_overhead_ms_count_total[5m]), 1e-9)", "refId": "A", "legendFormat": "mean overhead"}]
+        },
+        {
+          "id": 27,
+          "type": "timeseries",
+          "title": "Semantic cache hit rate",
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 38},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1}},
+          "targets": [{"expr": "sum(rate(headroom_requests_cached_total[5m])) / clamp_min(sum(rate(headroom_requests_total[5m])), 1e-9)", "refId": "A", "legendFormat": "cache hit rate"}]
+        }
+      ]
     }
   ]
 }
