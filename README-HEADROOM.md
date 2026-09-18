@@ -50,7 +50,11 @@ The OTel Collector's Prometheus receiver scrapes these services every 15s and re
 
 ### Headroom metrics (selection)
 
-`headroom_tokens_saved_total`, `headroom_persistent_savings_tokens_saved_total`, `headroom_requests_total`, `headroom_requests_failed_total`, `headroom_requests_cached_total`, `headroom_latency_ms_sum/_count`, `headroom_overhead_ms_sum/_count`.
+Proxy-native counters — these only move when LLM traffic is routed *through* the proxy, so they remain 0 in an MCP-tools-only setup: `headroom_tokens_saved_total`, `headroom_persistent_savings_tokens_saved_total`, `headroom_requests_total`, `headroom_requests_failed_total`, `headroom_requests_cached_total`, `headroom_inbound_requests_total`.
+
+> **Series-name drift:** the OTel prometheus receiver normalizes summary counters on the way into VictoriaMetrics, so what the proxy serves as `headroom_latency_ms_sum/_count` (likewise `_overhead_ms_`, `_ttfb_ms_`) is stored as `headroom_latency_ms_sum_total` / `headroom_latency_ms_count_total`. Build Grafana panels on the `_total` names.
+
+MCP tool usage (the live path: agent → LiteLLM gateway → headroom-mcp) is counted by LiteLLM: `litellm_mcp_tool_calls_total{mcp_server_name="headroom", mcp_tool_name="headroom_compress"}`. Tokens saved by MCP compressions are reported by the `headroom_stats` tool output and are not exported to Prometheus.
 
 ### OpenSRE metrics
 
