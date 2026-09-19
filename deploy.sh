@@ -339,6 +339,19 @@ deploy_stack() {
     log_info "Starting MCP servers, LiteLLM proxy, Mezmo AURA agent, Nginx reverse proxy, and DuckDNS..."
     docker compose up -d mcp-victoriametrics mcp-victorialogs mcp-victoriatraces mcp-grafana litellm aura nginx duckdns
 
+    # Start Langfuse (LLM observability). The web image must be built from
+    # source with NEXT_PUBLIC_BASE_PATH=/langfuse (prebuilt images cannot be
+    # served under a sub path).
+    if ! docker image inspect "${LANGFUSE_WEB_IMAGE:-o11ystack/langfuse-web:4-langfuse-path}" >/dev/null 2>&1; then
+        log_info "Building Langfuse web image with base path /langfuse (this takes a few minutes)..."
+        "${STACK_DIR}/scripts/build-langfuse-web.sh"
+    fi
+    log_info "Starting Langfuse storage (ClickHouse + MinIO) and application (web + worker)..."
+    docker compose up -d langfuse-clickhouse langfuse-minio
+    "${STACK_DIR}/scripts/init-langfuse-db.sh" || log_warn "Langfuse DB init reported an issue; check scripts/init-langfuse-db.sh output."
+    docker compose up -d langfuse-web langfuse-worker
+    docker compose restart nginx
+
     log_success "All stack containers are up!"
 }
 

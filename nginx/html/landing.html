@@ -1104,7 +1104,7 @@
       <div class="container">
         <div class="status-badge">
           <span class="status-dot"></span>
-          Stack Active &bull; neoson-o11y.duckdns.org &bull; 18/18 Services Healthy
+          Stack Active &bull; neoson-o11y.duckdns.org &bull; 29/29 Services Healthy
         </div>
         <h1 class="hero-title">
           Unified Observability &amp; <br/>
@@ -1126,12 +1126,16 @@
             <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             LiteLLM AI Gateway
           </a>
+          <a href="/langfuse/" class="btn btn-secondary">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 4-6"/></svg>
+            Langfuse LLM Traces
+          </a>
         </div>
 
         <!-- Live Status Metric Strip -->
         <div class="stats-strip">
           <div class="stat-item">
-            <div class="stat-val"><span style="color:var(--emerald)">18</span>/18</div>
+            <div class="stat-val"><span style="color:var(--emerald)">29</span>/29</div>
             <div class="stat-label">Running Containers</div>
           </div>
           <div class="stat-item">
@@ -1292,7 +1296,7 @@
 
         <!-- Filter tabs -->
         <div class="tab-nav">
-          <button class="tab-btn active" onclick="filterCards('all', this)">All Components (18)</button>
+          <button class="tab-btn active" onclick="filterCards('all', this)">All Components (14)</button>
           <button class="tab-btn" onclick="filterCards('victoria', this)">Victoria Trio</button>
           <button class="tab-btn" onclick="filterCards('ai', this)">AI &amp; MCP Gateway</button>
           <button class="tab-btn" onclick="filterCards('telemetry', this)">Telemetry &amp; eBPF</button>
@@ -1474,7 +1478,7 @@
             </div>
           </div>
 
-          <!-- 6. LiteLLM Proxy & MCP Gateway -->
+          <!-- 7. LiteLLM Proxy & MCP Gateway -->
           <div class="software-card" data-category="ai">
             <div>
               <div class="card-top">
@@ -1501,7 +1505,34 @@
             </div>
           </div>
 
-          <!-- 7. Grafana Beyla -->
+          <!-- 8. Langfuse v4 LLM Observability -->
+          <div class="software-card" data-category="ai">
+            <div>
+              <div class="card-top">
+                <div class="software-icon-wrapper" style="color:#a78bfa">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 4-6"/></svg>
+                </div>
+                <span class="auth-pill bearer">Master Key</span>
+              </div>
+              <h4 class="software-name">Langfuse</h4>
+              <div class="software-tagline">LLM &amp; MCP Call Tracing</div>
+              <p class="software-desc">
+                Self-hosted LLM observability: every LiteLLM completion and MCP tool call captured as an OpenTelemetry trace with tokens, cost, latency and full prompt / response payloads.
+              </p>
+              <ul class="spec-list">
+                <li>Port: :3000 (Internal) &bull; /langfuse/ (Public)</li>
+                <li>ClickHouse OLAP + S3 blob store + Postgres &amp; Redis state</li>
+                <li>Ingests LiteLLM OTLP spans via the OpenTelemetry Collector</li>
+                <li>Observability data queryable from Grafana (ClickHouse)</li>
+              </ul>
+            </div>
+            <div class="card-actions">
+              <span style="font-size:0.75rem;color:var(--text-dim)">langfuse</span>
+              <a href="/langfuse/" class="btn btn-primary btn-sm">Langfuse UI &rarr;</a>
+            </div>
+          </div>
+
+          <!-- 9. Grafana Beyla -->
           <div class="software-card" data-category="telemetry">
             <div>
               <div class="card-top">
@@ -1528,7 +1559,7 @@
             </div>
           </div>
 
-          <!-- 8. OpenTelemetry Collector Contrib -->
+          <!-- 10. OpenTelemetry Collector Contrib -->
           <div class="software-card" data-category="telemetry">
             <div>
               <div class="card-top">
@@ -1555,7 +1586,7 @@
             </div>
           </div>
 
-          <!-- 9. Node Exporter & Process Exporter -->
+          <!-- 11. Node Exporter & Process Exporter -->
           <div class="software-card" data-category="telemetry">
             <div>
               <div class="card-top">
@@ -1582,7 +1613,7 @@
             </div>
           </div>
 
-          <!-- 10. Nginx Reverse Proxy -->
+          <!-- 12. Nginx Reverse Proxy -->
           <div class="software-card" data-category="infra">
             <div>
               <div class="card-top">
@@ -1609,7 +1640,7 @@
             </div>
           </div>
 
-          <!-- 11. DuckDNS & Let's Encrypt -->
+          <!-- 13. DuckDNS & Let's Encrypt -->
           <div class="software-card" data-category="infra">
             <div>
               <div class="card-top">
@@ -1636,7 +1667,7 @@
             </div>
           </div>
 
-          <!-- 12. Stateful Backends (MySQL, Postgres, Redis) -->
+          <!-- 14. Stateful Backends (MySQL, Postgres, Redis) -->
           <div class="software-card" data-category="infra">
             <div>
               <div class="card-top">
@@ -1846,11 +1877,11 @@
     <div class="container footer-inner">
       <div>
         <strong style="color:var(--text-main)">O11yStack &bull; Autonomous AI SRE Platform</strong>
-        <p style="margin-top:0.25rem">Integrated VictoriaMetrics, VictoriaLogs, VictoriaTraces, Grafana, LiteLLM &amp; Mezmo AURA.</p>
+        <p style="margin-top:0.25rem">Integrated VictoriaMetrics, VictoriaLogs, VictoriaTraces, Grafana, LiteLLM, Langfuse &amp; Mezmo AURA.</p>
       </div>
       <div class="footer-links">
         <a href="/index.html">Matrix Portal</a>
-        <a href="/grafana/">Grafana</a>
+        <a href="/grafana/">Grafana</a> <a href="/langfuse/">Langfuse</a>
         <a href="/vmetrics/vmui/">VictoriaMetrics</a>
         <a href="/vlogs/select/vmui/">VictoriaLogs</a>
         <a href="/vtraces/select/vmui/">VictoriaTraces</a>
