@@ -37,3 +37,20 @@ datasources:
     access: proxy
     url: http://victoriatraces:10428/select/jaeger
     editable: true
+
+  # Langfuse LLM observability data (ClickHouse OLAP store behind Langfuse v4).
+  # Read-only user `grafana_langfuse`, created at ClickHouse first boot.
+  - name: Langfuse-ClickHouse
+    type: grafana-clickhouse-datasource
+    uid: langfuse-clickhouse
+    access: proxy
+    editable: true
+    jsonData:
+      host: langfuse-clickhouse
+      port: 8123
+      protocol: http
+      username: $GRAFANA_LANGFUSE_DB_USER
+      defaultDatabase: default
+      tlsSkipVerify: false
+    secureJsonData:
+      password: $GRAFANA_LANGFUSE_DB_PASSWORD

@@ -37,6 +37,10 @@ receivers:
           scrape_interval: 15s
           static_configs:
             - targets: ['headroom:8787']
+        - job_name: 'headroom-exporter'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['headroom-exporter:9107']
         - job_name: 'opensre'
           scrape_interval: 15s
           static_configs:
@@ -79,6 +83,13 @@ processors:
   resourcedetection:
     detectors: [system, env]
     timeout: 2s
+  # Keep only LiteLLM gateway + AURA agent spans for the Langfuse export
+  # (drops Beyla eBPF HTTP spans and datastore spans so Langfuse stays LLM-focused)
+  filter/langfuse:
+    error_mode: ignore
+    traces:
+      span:
+        - '(resource.attributes["service.name"] != "litellm") and (resource.attributes["service.name"] != "aura")'
 
 exporters:
   prometheusremotewrite:
@@ -96,6 +107,15 @@ exporters:
     tls:
       insecure: true
 
+  # Langfuse v4 OTLP ingest (self-hosted at /langfuse)
+  otlphttp/langfuse:
+    endpoint: "http://langfuse-web:3000/langfuse/api/public/otel"
+    headers:
+      Authorization: "${env:LANGFUSE_OTLP_AUTH_HEADER}"
+      x-langfuse-ingestion-version: "4"
+    tls:
+      insecure: true
+
 service:
   pipelines:
     metrics:
@@ -110,6 +130,11 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [otlp/traces]
+    # Second fan-out of the same OTLP stream into Langfuse (LLM + MCP spans)
+    traces/langfuse:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/langfuse, batch]
+      exporters: [otlphttp/langfuse]
   telemetry:
     logs:
       level: info

@@ -1,0 +1,208 @@
+{
+  "uid": "langfuse-llm-obs",
+  "title": "Langfuse — LLM & MCP Observability",
+  "tags": ["langfuse", "llm", "mcp", "observability"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "LLM calls / interval",
+      "description": "LiteLLM completions traced via OTLP into Langfuse (gen_ai spans, type=GENERATION).",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "langfuse-clickhouse" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "sql",
+          "format": "timeSeries",
+          "rawSql": "SELECT $__timeInterval(start_time) AS time, count() AS \"LLM calls\" FROM events_full WHERE type = 'GENERATION' AND provided_model_name NOT IN ('', 'mcp-tool-call') AND $__timeFilter(start_time) GROUP BY time ORDER BY time"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Latency by model (p50 / p95)",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "langfuse-clickhouse" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "sql",
+          "format": "timeSeries",
+          "rawSql": "SELECT $__timeInterval(start_time) AS time, concat(provided_model_name, ' p95') AS metric, quantile(0.95)(dateDiff('millisecond', start_time, end_time)) AS value FROM events_full WHERE type = 'GENERATION' AND provided_model_name NOT IN ('', 'mcp-tool-call') AND isNotNull(end_time) AND $__timeFilter(start_time) GROUP BY time, metric ORDER BY time"
+        },
+        {
+          "refId": "B",
+          "queryType": "sql",
+          "format": "timeSeries",
+          "rawSql": "SELECT $__timeInterval(start_time) AS time, concat(provided_model_name, ' p50') AS metric, quantile(0.50)(dateDiff('millisecond', start_time, end_time)) AS value FROM events_full WHERE type = 'GENERATION' AND provided_model_name NOT IN ('', 'mcp-tool-call') AND isNotNull(end_time) AND $__timeFilter(start_time) GROUP BY time, metric ORDER BY time"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Total cost (window)",
+      "gridPos": { "h": 7, "w": 4, "x": 16, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "langfuse-clickhouse" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "sql",
+          "format": "table",
+          "rawSql": "SELECT round(sum(total_cost), 4) AS \"USD\" FROM events_full WHERE $__timeFilter(start_time)"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Errors",
+      "gridPos": { "h": 7, "w": 4, "x": 20, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "langfuse-clickhouse" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "sql",
+          "format": "table",
+          "rawSql": "SELECT count() AS \"errors\" FROM events_full WHERE level = 'ERROR' AND $__timeFilter(start_time)"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Tokens (input / output)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "langfuse-clickhouse" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "sql",
+          "format": "timeSeries",
+          "rawSql": "SELECT $__timeInterval(start_time) AS time, 'input' AS metric, sum(usage_details['input']) AS value FROM events_full WHERE type = 'GENERATION' AND provided_model_name NOT IN ('', 'mcp-tool-call') AND $__timeFilter(start_time) GROUP BY time ORDER BY time"
+        },
+        {
+          "refId": "B",
+          "queryType": "sql",
+          "format": "timeSeries",
+          "rawSql": "SELECT $__timeInterval(start_time) AS time, 'output' AS metric, sum(usage_details['output']) AS value FROM events_full WHERE type = 'GENERATION' AND provided_model_name NOT IN ('', 'mcp-tool-call') AND $__timeFilter(start_time) GROUP BY time ORDER BY time"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "MCP tool calls (by tool)",
+      "description": "MCP tools/call spans captured by the LiteLLM OTel v2 logger (type=TOOL).",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "langfuse-clickhouse" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "sql",
+          "format": "table",
+          "rawSql": "SELECT name AS \"Tool\", count() AS \"Calls\", round(avg(dateDiff('millisecond', start_time, end_time))) AS \"Avg ms\", countIf(level = 'ERROR') AS \"Errors\" FROM events_full WHERE type = 'TOOL' AND $__timeFilter(start_time) GROUP BY Tool ORDER BY Calls DESC LIMIT 20"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Recent LLM calls",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 15 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "langfuse-clickhouse" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "sql",
+          "format": "table",
+          "rawSql": "SELECT start_time AS \"Time\", provided_model_name AS \"Model\", name AS \"Operation\", dateDiff('millisecond', start_time, end_time) AS \"ms\", usage_details['input'] AS \"In\", usage_details['output'] AS \"Out\", total_cost AS \"Cost\", level AS \"Level\", trace_id AS \"trace_id\" FROM events_full WHERE type = 'GENERATION' AND provided_model_name NOT IN ('', 'mcp-tool-call') AND $__timeFilter(start_time) ORDER BY start_time DESC LIMIT 50"
+        }
+      ],
+      "options": { "sortBy": [ { "displayName": "Time", "desc": true } ] },
+      "fieldConfig": {
+        "defaults": {
+          "links": [
+            {
+              "title": "Open trace in Langfuse",
+              "url": "/langfuse/project/o11ystack/traces/${__data.fields.trace_id}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Recent MCP tool calls",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 15 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "langfuse-clickhouse" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "sql",
+          "format": "table",
+          "rawSql": "SELECT start_time AS \"Time\", name AS \"Tool\", dateDiff('millisecond', start_time, end_time) AS \"ms\", level AS \"Level\", trace_id AS \"trace_id\" FROM events_full WHERE type = 'TOOL' AND $__timeFilter(start_time) ORDER BY start_time DESC LIMIT 50"
+        }
+      ],
+      "options": { "sortBy": [ { "displayName": "Time", "desc": true } ] },
+      "fieldConfig": {
+        "defaults": {
+          "links": [
+            {
+              "title": "Open trace in Langfuse",
+              "url": "/langfuse/project/o11ystack/traces/${__data.fields.trace_id}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Traces / interval",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 24 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "langfuse-clickhouse" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "sql",
+          "format": "timeSeries",
+          "rawSql": "SELECT $__timeInterval(start_time) AS time, count(DISTINCT trace_id) AS \"traces\" FROM events_full WHERE $__timeFilter(start_time) GROUP BY time ORDER BY time"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Models used",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "langfuse-clickhouse" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "sql",
+          "format": "table",
+          "rawSql": "SELECT provided_model_name AS \"Model\", count() AS \"Calls\", sum(usage_details['input']) AS \"In tokens\", sum(usage_details['output']) AS \"Out tokens\", round(sum(total_cost), 4) AS \"USD\" FROM events_full WHERE type = 'GENERATION' AND provided_model_name NOT IN ('', 'mcp-tool-call') AND $__timeFilter(start_time) GROUP BY Model ORDER BY Calls DESC"
+        }
+      ]
+    }
+  ]
+}

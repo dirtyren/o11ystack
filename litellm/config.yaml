@@ -29,6 +29,7 @@ litellm_settings:
   max_tokens: 8192
   callbacks:
     - prometheus
+    - otel      # OTel v2 spans: LLM calls + MCP tools/call + tools/list -> otel-collector -> VictoriaTraces & Langfuse
 
 # MCP Servers accessible to LiteLLM and connected agents
 mcp_servers:

@@ -1,3 +1,35 @@
+# ==========================================
+# Langfuse v4 (self-hosted) — shared environment
+# Web + Worker share DB/CH/S3/Redis settings. Secrets come from .env.
+# ==========================================
+x-langfuse-env: &langfuse-env
+  DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD}@postgres:5432/langfuse
+  SALT: ${LANGFUSE_SALT}
+  ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY}
+  TELEMETRY_ENABLED: "false"
+  CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+  CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+  CLICKHOUSE_USER: ${LANGFUSE_CLICKHOUSE_USER:-clickhouse}
+  CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD}
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_AUTH: ${REDIS_PASSWORD:-changeme_redis}
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ROOT_USER:-minio}
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_ROOT_PASSWORD}
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+  LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ROOT_USER:-minio}
+  LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_ROOT_PASSWORD}
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+
 services:
   # ==========================================
   # Victoria Observability Stack (Logs, Metrics, Traces)
@@ -84,9 +116,11 @@ services:
       GF_SERVER_ROOT_URL: ${SERVER_PROTOCOL:-https}://${SERVER_HOST:-localhost}/grafana/
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_INSTALL_PLUGINS: "victoriametrics-logs-datasource"
+      GF_INSTALL_PLUGINS: "victoriametrics-logs-datasource,grafana-clickhouse-datasource"
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: "mezmo-aura-app,opensre-app"
       GF_DATAPROXY_TIMEOUT: "900"
+      GRAFANA_LANGFUSE_DB_PASSWORD: ${GRAFANA_LANGFUSE_DB_PASSWORD}
+      GRAFANA_LANGFUSE_DB_USER: ${GRAFANA_LANGFUSE_DB_USER:-grafana_langfuse}
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -176,6 +210,13 @@ services:
       AZURE_API_KEY: ${AZURE_API_KEY:-}
       AZURE_API_BASE: ${AZURE_API_BASE:-}
       AZURE_API_VERSION: ${AZURE_API_VERSION:-}
+      # --- OpenTelemetry traces (LLM + MCP tool calls) -> otel-collector -> VictoriaTraces + Langfuse ---
+      LITELLM_OTEL_V2: "true"
+      OTEL_EXPORTER: "otlp_grpc"
+      OTEL_ENDPOINT: "http://otel-collector:4317"
+      OTEL_SERVICE_NAME: "litellm"
+      LITELLM_OTEL_INTEGRATION_ENABLE_METRICS: "true"
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "span_only"
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
     command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
@@ -250,6 +291,8 @@ services:
       PROMETHEUS_URL: "http://victoriametrics:8428"
       GRAFANA_INSTANCE_URL: "http://grafana:3000/grafana"
       GRAFANA_READ_TOKEN: ${GRAFANA_SERVICE_ACCOUNT_TOKEN:-}
+      HEADROOM_MCP_URL: "http://litellm:4000/headroom/mcp"
+      HEADROOM_MCP_AUTH_TOKEN: ${LITELLM_MASTER_KEY}
     depends_on:
       litellm:
         condition: service_healthy
@@ -284,6 +327,9 @@ services:
     environment:
       HEADROOM_BEACON: "off"
       DO_NOT_TRACK: "1"
+      HEADROOM_SAVINGS_EVENTS_PATH: "/headroom-state/savings_events.jsonl"
+    volumes:
+      - headroom-state:/headroom-state
     networks:
       - o11y-net
     healthcheck:
@@ -312,6 +358,9 @@ services:
     environment:
       HEADROOM_BEACON: "off"
       DO_NOT_TRACK: "1"
+      HEADROOM_SAVINGS_EVENTS_PATH: "/headroom-state/savings_events.jsonl"
+    volumes:
+      - headroom-state:/headroom-state
     depends_on:
       headroom:
         condition: service_started
@@ -319,6 +368,142 @@ services:
       - o11y-net
     healthcheck:
       disable: true
+
+  # ==========================================
+  # Headroom savings-ledger exporter
+  # (MCP + proxy compression events → Prometheus)
+  # ==========================================
+  headroom-exporter:
+    image: python:3.12-slim
+    container_name: headroom-exporter
+    restart: unless-stopped
+    command: ["python", "/app/exporter.py"]
+    environment:
+      HEADROOM_LEDGER_PATH: "/headroom-state/savings_events.jsonl"
+      EXPORTER_PORT: "9107"
+    volumes:
+      - ./headroom-exporter/exporter.py:/app/exporter.py:ro
+      - headroom-state:/headroom-state:ro
+    networks:
+      - o11y-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9107/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ==========================================
+  # Langfuse v4 — self-hosted LLM observability
+  # (web UI behind nginx at /langfuse, OTLP ingest for LiteLLM traces)
+  # ==========================================
+  langfuse-clickhouse:
+    image: clickhouse/clickhouse-server:25.12
+    container_name: langfuse-clickhouse
+    restart: unless-stopped
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: ${LANGFUSE_CLICKHOUSE_USER:-clickhouse}
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+      GRAFANA_LANGFUSE_DB_USER: ${GRAFANA_LANGFUSE_DB_USER:-grafana_langfuse}
+      GRAFANA_LANGFUSE_DB_PASSWORD: ${GRAFANA_LANGFUSE_DB_PASSWORD}
+    volumes:
+      - langfuse-clickhouse-data:/var/lib/clickhouse
+      - langfuse-clickhouse-logs:/var/log/clickhouse-server
+      - ./langfuse/clickhouse-init:/docker-entrypoint-initdb.d:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - o11y-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  langfuse-minio:
+    image: bitnamilegacy/minio:2025.7.23
+    container_name: langfuse-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${LANGFUSE_MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_ROOT_PASSWORD}
+      MINIO_DEFAULT_BUCKETS: langfuse
+      MINIO_DATA_DIR: /bitnami/minio/data
+      MINIO_BROWSER: "off"
+    volumes:
+      - langfuse-minio-data:/bitnami/minio/data
+    networks:
+      - o11y-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  langfuse-web:
+    # Built from source: NEXT_PUBLIC_BASE_PATH=/langfuse (see scripts/build-langfuse-web.sh)
+    image: o11ystack/langfuse-web:4-langfuse-path
+    container_name: langfuse-web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_healthy
+      langfuse-minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *langfuse-env
+      NEXTAUTH_URL: ${SERVER_PROTOCOL:-https}://${SERVER_HOST:-localhost}/langfuse/api/auth
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET}
+      LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-o11ystack}
+      LANGFUSE_INIT_ORG_NAME: ${LANGFUSE_INIT_ORG_NAME:-o11ystack}
+      LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-o11ystack}
+      LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME:-o11ystack}
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-admin@o11ystack.local}
+      LANGFUSE_INIT_USER_NAME: ${LANGFUSE_INIT_USER_NAME:-admin}
+      LANGFUSE_INIT_USER_PASSWORD: ${LITELLM_MASTER_KEY}
+      # Next.js standalone binds to $HOSTNAME, which Docker sets to the container
+      # ID -> the app would only listen on the container IP and every in-container
+      # healthcheck on 127.0.0.1 fails. Bind all interfaces instead.
+      HOSTNAME: "0.0.0.0"
+    networks:
+      - o11y-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/langfuse/api/public/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+  langfuse-worker:
+    image: docker.langfuse.com/langfuse/langfuse-worker:4
+    container_name: langfuse-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_healthy
+      langfuse-minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *langfuse-env
+    networks:
+      - o11y-net
 
   # ==========================================
   # Model Context Protocol (MCP) Servers
@@ -441,6 +626,7 @@ services:
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     environment:
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      LANGFUSE_OTLP_AUTH_HEADER: ${LANGFUSE_OTLP_AUTH_HEADER}
     depends_on:
       - victoriametrics
       - victorialogs
@@ -508,6 +694,7 @@ services:
       - aura
       - opensre
       - headroom
+      - langfuse-web
     networks:
       - o11y-net
   # ==========================================
@@ -525,11 +712,15 @@ services:
       - o11y-net
 
 volumes:
+  headroom-state:
   mysql-data:
   grafana-data:
   postgres-data:
   redis-data:
   vector-data:
+  langfuse-clickhouse-data:
+  langfuse-clickhouse-logs:
+  langfuse-minio-data:
 
 networks:
   o11y-net:
