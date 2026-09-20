@@ -563,10 +563,11 @@ All core backends are wired into Grafana through [`grafana/provisioning/datasour
 
 ### Pre-Installed Dashboards
 
-All 5 core dashboards are pre-installed in the **Observability** folder via [`grafana/provisioning/dashboards/`](grafana/provisioning/dashboards/):
+All core dashboards are pre-installed in the **Observability** folder via [`grafana/provisioning/dashboards/`](grafana/provisioning/dashboards/):
 
 | Dashboard Name | Grafana ID | UID | Scope |
 | :--- | :--- | :--- | :--- |
+| **RED Metrics & Golden Signals** | — | `red-metrics-golden-signals` | Executive RED metrics (Rate, Errors, Duration) & Google SRE 4 Golden Signals across all services via Beyla eBPF, Node & Process Exporters. |
 | **Node Exporter Full** | `1860` | `node-exporter-full` | Host CPU, Memory, Disk I/O, Network, and System Load. |
 | **Process Exporter with Treemap** | `13882` | `process-exporter-treemap` | Per-process CPU, memory, thread counts, and file descriptors. |
 | **VictoriaMetrics - Single-Node** | `10229` | `victoriametrics-single-node` | Ingestion rate, active time series, cache hit ratio, and disk usage. |
