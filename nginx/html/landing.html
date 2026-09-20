@@ -665,6 +665,126 @@
       margin: 0;
     }
 
+    /* -------------------------------------------------------------
+       RED METRICS & 4 GOLDEN SIGNALS SECTION
+       ------------------------------------------------------------- */
+    .signals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .signal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-base);
+      border-radius: 0.85rem;
+      padding: 1.75rem;
+      box-shadow: var(--card-shadow);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .signal-card:hover {
+      border-color: var(--border-focus);
+      transform: translateY(-2px);
+      box-shadow: var(--card-shadow-hover);
+    }
+
+    .signal-icon-wrapper {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 0.5rem;
+      background: var(--primary-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .signal-name {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+      letter-spacing: -0.01em;
+    }
+
+    .signal-tagline {
+      font-size: 0.775rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--cyan);
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .signal-desc {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+      line-height: 1.55;
+    }
+
+    .signal-spec-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.825rem;
+      color: #94a3b8;
+    }
+
+    .signal-spec-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .signal-spec-list li::before {
+      content: "•";
+      color: var(--cyan);
+      font-weight: bold;
+    }
+
+    .signal-promql {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 0.45rem 0.65rem;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.35rem;
+      color: var(--cyan);
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    .signals-banner {
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 0.85rem;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .signals-banner-text h4 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .signals-banner-text p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
     /* Terminal Simulation Card */
     .terminal-card {
       background: #050811;
@@ -1068,7 +1188,7 @@
 
       <nav class="nav-links">
         <a href="#aura-sre">AURA SRE Agent</a>
-        <a href="#capabilities">Capabilities</a>
+        <a href="#red-signals">RED &amp; Golden Signals</a>
         <a href="#oss-stack">OSS Components</a>
         <a href="#architecture">Architecture</a>
         <a href="#quickstart">Quickstart</a>
@@ -1114,7 +1234,11 @@
           Zero-overhead telemetry correlation with VictoriaMetrics, VictoriaLogs, VictoriaTraces, and Grafana — augmented by Mezmo AURA for autonomous multi-agent root-cause incident investigation.
         </p>
         <div class="hero-cta">
-          <a href="/grafana/" class="btn btn-primary">
+          <a href="/grafana/d/red-metrics-golden-signals/red-metrics-and-golden-signals" class="btn btn-primary">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            RED &amp; Golden Signals
+          </a>
+          <a href="/grafana/" class="btn btn-secondary">
             <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
             Launch Grafana Portal
           </a>
@@ -1124,11 +1248,11 @@
           </a>
           <a href="/litellm/ui/" class="btn btn-secondary">
             <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-            LiteLLM AI Gateway
+            LiteLLM Gateway
           </a>
           <a href="/langfuse/" class="btn btn-secondary">
             <svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 4-6"/></svg>
-            Langfuse LLM Traces
+            Langfuse Traces
           </a>
         </div>
 
@@ -1283,6 +1407,138 @@
       </div>
     </section>
 
+    <!-- RED Metrics & Google SRE 4 Golden Signals Section -->
+    <section id="red-signals" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Google SRE &amp; eBPF Framework</div>
+          <h2 class="section-title">RED Metrics &amp; 4 Golden Signals Cockpit</h2>
+          <p class="section-desc">
+            Standardized observability architecture unifying Rate, Errors, and Duration with Latency, Traffic, Errors, and Saturation across all 17+ microservices using zero-code eBPF and kernel telemetry.
+          </p>
+        </div>
+
+        <div class="signals-grid">
+          <!-- Signal 1: Rate & Traffic -->
+          <div class="signal-card">
+            <div>
+              <div class="card-top">
+                <div class="signal-icon-wrapper" style="color:var(--cyan)">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </div>
+                <span class="card-badge badge-cyan">Traffic &bull; Rate</span>
+              </div>
+              <h3 class="signal-name">Rate &amp; Traffic</h3>
+              <div class="signal-tagline">Demand on the System</div>
+              <p class="signal-desc">
+                Measures user and agent demand. Captured host-wide without code modifications via Grafana Beyla eBPF socket monitoring.
+              </p>
+              <ul class="signal-spec-list">
+                <li>Real-time HTTP requests/sec across all 17+ services</li>
+                <li>Status breakdown: 2xx Success vs 3xx Redirect vs 4xx/5xx</li>
+                <li>Top 10 highest-throughput HTTP endpoints &amp; routes</li>
+                <li>Host network interface bandwidth (RX/TX throughput)</li>
+              </ul>
+            </div>
+            <div>
+              <div class="signal-promql">sum by (service_name) (rate(http_server_request_duration_seconds_count[5m]))</div>
+            </div>
+          </div>
+
+          <!-- Signal 2: Errors -->
+          <div class="signal-card">
+            <div>
+              <div class="card-top">
+                <div class="signal-icon-wrapper" style="color:#f87171">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <span class="card-badge badge-amber">Errors &bull; Reliability</span>
+              </div>
+              <h3 class="signal-name">Errors &amp; Health</h3>
+              <div class="signal-tagline">Failure Rates &amp; Error Budgets</div>
+              <p class="signal-desc">
+                Quantifies service failures, isolating server faults (5xx), client mistakes (4xx), and internal LLM gateway timeouts before SLA breaches.
+              </p>
+              <ul class="signal-spec-list">
+                <li>HTTP 5xx server error rate per service</li>
+                <li>HTTP 4xx client and authorization fault rate</li>
+                <li>Error rate percentage (% of total requests failing)</li>
+                <li>Multi-field real-time service health &amp; error budget table</li>
+              </ul>
+            </div>
+            <div>
+              <div class="signal-promql">100 * sum(rate(...5..)) / clamp_min(sum(rate(...total)), 0.001)</div>
+            </div>
+          </div>
+
+          <!-- Signal 3: Duration & Latency -->
+          <div class="signal-card">
+            <div>
+              <div class="card-top">
+                <div class="signal-icon-wrapper" style="color:var(--violet)">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <span class="card-badge badge-violet">Duration &bull; Latency</span>
+              </div>
+              <h3 class="signal-name">Duration &amp; Latency</h3>
+              <div class="signal-tagline">Response Time Distribution</div>
+              <p class="signal-desc">
+                High-resolution histogram percentiles separating fast paths from tail latency outliers, plus database round-trip inspection.
+              </p>
+              <ul class="signal-spec-list">
+                <li>Multi-tier latency percentiles: p50 (Median), p90, p95, p99 (Tail)</li>
+                <li>Individual per-service p95 response time curves</li>
+                <li>Mean vs Max duration calculated via eBPF sum/count</li>
+                <li>Database &amp; backend client call duration (SQL queries)</li>
+              </ul>
+            </div>
+            <div>
+              <div class="signal-promql">histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))</div>
+            </div>
+          </div>
+
+          <!-- Signal 4: Saturation -->
+          <div class="signal-card">
+            <div>
+              <div class="card-top">
+                <div class="signal-icon-wrapper" style="color:var(--emerald)">
+                  <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                </div>
+                <span class="card-badge badge-emerald">Saturation &bull; Headroom</span>
+              </div>
+              <h3 class="signal-name">Saturation</h3>
+              <div class="signal-tagline">System Capacity &amp; Constraints</div>
+              <p class="signal-desc">
+                Measures how full the service is, combining Node Exporter host hardware limits with Process Exporter granular daemon tracking.
+              </p>
+              <ul class="signal-spec-list">
+                <li>Host CPU saturation &amp; mode breakdown (User, Sys, IOWait, Steal)</li>
+                <li>Host memory breakdown (Used, Cached, Buffers, Free)</li>
+                <li>Per-process CPU &amp; Resident Set Size (RSS) memory by group</li>
+                <li>Worst file descriptor saturation (% of limit) &amp; thread counts</li>
+              </ul>
+            </div>
+            <div>
+              <div class="signal-promql">100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Banner Action Card -->
+        <div class="signals-banner">
+          <div class="signals-banner-text">
+            <h4>Live RED Metrics &amp; Golden Signals Grafana Dashboard</h4>
+            <p>Pre-provisioned in the Observability folder &bull; UID: <code>red-metrics-golden-signals</code> &bull; 34 interactive panels with multi-service filtering.</p>
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <a href="/grafana/d/red-metrics-golden-signals/red-metrics-and-golden-signals" class="btn btn-primary btn-sm">
+              Launch RED Dashboard &rarr;
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Comprehensive OSS Software Stack Matrix -->
     <section id="oss-stack" class="section">
       <div class="container">
@@ -1408,7 +1664,10 @@
             </div>
             <div class="card-actions">
               <span style="font-size:0.75rem;color:var(--text-dim)">Default: admin</span>
-              <a href="/grafana/" class="btn btn-primary btn-sm">Open Grafana &rarr;</a>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                <a href="/grafana/d/red-metrics-golden-signals/red-metrics-and-golden-signals" class="btn btn-secondary btn-sm" title="Launch RED Metrics & Golden Signals Dashboard">RED Cockpit &rarr;</a>
+                <a href="/grafana/" class="btn btn-primary btn-sm">Open Grafana &rarr;</a>
+              </div>
             </div>
           </div>
 
@@ -1544,18 +1803,20 @@
               <h4 class="software-name">Grafana Beyla</h4>
               <div class="software-tagline">Zero-Code eBPF Auto-Instrumentation</div>
               <p class="software-desc">
-                Kernel-level eBPF probes inspecting HTTP/HTTPS, gRPC, and SQL traffic with zero code modifications, sending RED metrics and traces to OTEL Collector.
+                Kernel-level eBPF probes inspecting HTTP/HTTPS, gRPC, and SQL traffic with zero code modifications, powering the RED Metrics &amp; Golden Signals dashboard and OTLP pipelines.
               </p>
               <ul class="spec-list">
                 <li>Kernel eBPF: Ingests all system ports (1-65535)</li>
-                <li>Zero-overhead HTTP/gRPC span generation</li>
-                <li>Auto-detects backend latency and error codes</li>
-                <li>Exports directly to OTLP pipeline</li>
+                <li>Zero-overhead HTTP/gRPC RED metrics generation</li>
+                <li>Auto-detects latency percentiles (p50/p95/p99) and 4xx/5xx errors</li>
+                <li>Feeds VictoriaMetrics and VictoriaTraces via OTLP</li>
               </ul>
             </div>
             <div class="card-actions">
               <span style="font-size:0.75rem;color:var(--text-dim)">Kernel Layer</span>
-              <span class="btn btn-secondary btn-sm" style="cursor:default">Auto Active</span>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                <a href="/grafana/d/red-metrics-golden-signals/red-metrics-and-golden-signals" class="btn btn-secondary btn-sm">View RED Metrics &rarr;</a>
+              </div>
             </div>
           </div>
 
@@ -1785,6 +2046,10 @@
                 <div class="arch-node-desc">Pre-configured dashboards for real-time human SRE exploration.</div>
               </div>
               <div class="arch-node">
+                <div class="arch-node-name">RED &amp; Golden Signals</div>
+                <div class="arch-node-desc">34-panel cockpit tracking Rate, Errors, Latency, and Saturation.</div>
+              </div>
+              <div class="arch-node">
                 <div class="arch-node-name">LiteLLM MCP Hub</div>
                 <div class="arch-node-desc">Exposes authenticated streamable tools to LLM reasoning models.</div>
               </div>
@@ -1842,7 +2107,24 @@
   -d 'query=_time:5m AND level:error'</pre>
           </div>
 
-          <!-- Snippet 3: PromQL instant query -->
+          <!-- Snippet 3: RED Metrics via PromQL -->
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>Query RED Metrics via PromQL (p95 &amp; 5xx Errors)</span>
+              <button class="copy-btn" onclick="copySnippet(this, 'code-red')">Copy</button>
+            </div>
+            <pre id="code-red"># Query p95 Latency by Service via eBPF
+curl -s -u "admin:&lt;BASIC_AUTH_PASSWORD&gt;" \
+  --data-urlencode 'query=histogram_quantile(0.95, sum by (le, service_name) (rate(http_server_request_duration_seconds_bucket[5m])))' \
+  https://neoson-o11y.duckdns.org/vmetrics/api/v1/query | jq .
+
+# Query 5xx Server Error Rate by Service
+curl -s -u "admin:&lt;BASIC_AUTH_PASSWORD&gt;" \
+  --data-urlencode 'query=sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))' \
+  https://neoson-o11y.duckdns.org/vmetrics/api/v1/query | jq .</pre>
+          </div>
+
+          <!-- Snippet 4: PromQL instant query -->
           <div class="code-box">
             <div class="code-box-header">
               <span>Query VictoriaMetrics with PromQL</span>
@@ -1853,7 +2135,7 @@
   -d 'query=sum(rate(node_cpu_seconds_total{mode="idle"}[5m]))'</pre>
           </div>
 
-          <!-- Snippet 4: LiteLLM Chat API -->
+          <!-- Snippet 5: LiteLLM Chat API -->
           <div class="code-box">
             <div class="code-box-header">
               <span>LiteLLM Unified Multi-Model Gateway</span>
@@ -1881,7 +2163,9 @@
       </div>
       <div class="footer-links">
         <a href="/index.html">Matrix Portal</a>
-        <a href="/grafana/">Grafana</a> <a href="/langfuse/">Langfuse</a>
+        <a href="/grafana/">Grafana</a>
+        <a href="/grafana/d/red-metrics-golden-signals/red-metrics-and-golden-signals">RED Signals</a>
+        <a href="/langfuse/">Langfuse</a>
         <a href="/vmetrics/vmui/">VictoriaMetrics</a>
         <a href="/vlogs/select/vmui/">VictoriaLogs</a>
         <a href="/vtraces/select/vmui/">VictoriaTraces</a>

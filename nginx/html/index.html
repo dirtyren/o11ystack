@@ -764,6 +764,36 @@
         </div>
       </a>
 
+      <!-- Card 2: RED & Golden Signals -->
+      <a class="card" href="/grafana/d/red-metrics-golden-signals/red-metrics-and-golden-signals" target="_blank" rel="noopener noreferrer" data-keywords="red metrics golden signals rate errors duration latency saturation beyla ebpf grafana sre">
+        <div>
+          <div class="card-top">
+            <div class="app-icon-wrapper" style="border-color: rgba(16, 185, 129, 0.4);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+            </div>
+            <div class="card-header-info">
+              <div class="card-title-row">
+                <h2 class="card-title">RED &amp; Golden Signals</h2>
+              </div>
+              <div class="badges-row">
+                <span class="badge" style="border-color: rgba(16, 185, 129, 0.5); color: #34d399;">eBPF RED</span>
+                <span class="badge">34 Panels</span>
+                <span class="badge badge-public">Grafana</span>
+              </div>
+            </div>
+          </div>
+          <p class="card-desc">
+            Executive SRE cockpit unifying Rate, Errors, and Duration with Google SRE 4 Golden Signals. Zero-code auto-instrumentation via Grafana Beyla eBPF across 17+ services.
+          </p>
+        </div>
+        <div class="card-footer">
+          <span class="endpoint-path">/grafana/d/red-metrics-golden-signals/...</span>
+          <span class="card-arrow">Launch &rarr;</span>
+        </div>
+      </a>
+
       <!-- Card 2: VictoriaMetrics -->
       <a class="card" href="/vmetrics/vmui/" target="_blank" rel="noopener noreferrer" data-keywords="victoriametrics vmetrics vmui prometheus tsdb metrics time-series">
         <div>
@@ -970,6 +1000,12 @@
         <div class="code-box">
           <pre>curl -k -u admin:&lt;BASIC_AUTH_PASSWORD&gt; https://localhost/vmetrics/api/v1/query?query=up</pre>
           <button class="copy-btn" onclick="copySnippet('curl -k -u admin:<BASIC_AUTH_PASSWORD> https://localhost/vmetrics/api/v1/query?query=up')">Copy</button>
+        </div>
+
+        <p>Query RED Metrics (p95 Latency &amp; Error Rate):</p>
+        <div class="code-box">
+          <pre>curl -k -u admin:&lt;BASIC_AUTH_PASSWORD&gt; --data-urlencode 'query=histogram_quantile(0.95, sum by (le, service_name) (rate(http_server_request_duration_seconds_bucket[5m])))' https://localhost/vmetrics/api/v1/query</pre>
+          <button class="copy-btn" onclick="copySnippet('curl -k -u admin:<BASIC_AUTH_PASSWORD> --data-urlencode \'query=histogram_quantile(0.95, sum by (le, service_name) (rate(http_server_request_duration_seconds_bucket[5m])))\' https://localhost/vmetrics/api/v1/query')">Copy</button>
         </div>
 
         <p>Test VictoriaLogs LogSQL Search:</p>
