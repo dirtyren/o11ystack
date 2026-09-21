@@ -1219,7 +1219,7 @@
       "id": 23,
       "type": "timeseries",
       "title": "Database & Backend Client Operation Duration (p95)",
-      "description": "Database and backend client call duration via Beyla instrumentation.",
+      "description": "Database and backend client call duration via Beyla instrumentation following OpenTelemetry db.client.operation.duration semantic conventions.",
       "datasource": {
         "type": "prometheus",
         "uid": "victoriametrics"
@@ -1247,8 +1247,8 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "histogram_quantile(0.95, sum by (le, db_system) (rate(db_client_operation_duration_seconds_bucket[$__rate_interval]))) or on() vector(0)",
-          "legendFormat": "{{db_system}} client p95",
+          "expr": "histogram_quantile(0.95, sum by (le, db_system_name, db_system) (rate(db_client_operation_duration_seconds_bucket[$__rate_interval]))) or on() vector(0)",
+          "legendFormat": "{{db_system_name}}{{db_system}} client p95",
           "refId": "A"
         }
       ]
