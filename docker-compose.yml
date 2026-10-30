@@ -35,7 +35,7 @@ services:
   # Victoria Observability Stack (Logs, Metrics, Traces)
   # ==========================================
   victorialogs:
-    image: victoriametrics/victoria-logs:v1.52.0
+    image: victoriametrics/victoria-logs:v1.53.0
     container_name: victorialogs
     restart: unless-stopped
     command:
@@ -48,7 +48,7 @@ services:
       - o11y-net
 
   victoriametrics:
-    image: victoriametrics/victoria-metrics:v1.152.0
+    image: victoriametrics/victoria-metrics:v1.155.0
     container_name: victoriametrics
     restart: unless-stopped
     command:
@@ -61,7 +61,7 @@ services:
       - o11y-net
 
   victoriatraces:
-    image: victoriametrics/victoria-traces:v0.11.0
+    image: victoriametrics/victoria-traces:v0.12.1
     container_name: victoriatraces
     restart: unless-stopped
     command:
@@ -99,7 +99,7 @@ services:
       start_period: 15s
 
   grafana:
-    image: grafana/grafana:13.2.1
+    image: grafana/grafana:13.3.0
     container_name: grafana
     restart: unless-stopped
     depends_on:
@@ -161,7 +161,7 @@ services:
   # Redis In-Memory Cache for LiteLLM
   # ==========================================
   redis:
-    image: redis:7.4.11-alpine
+    image: redis:7.4.12-alpine
     container_name: redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-changeme_redis}"]
@@ -179,7 +179,7 @@ services:
       start_period: 5s
 
   litellm:
-    image: ghcr.io/berriai/litellm:v1.100.1
+    image: ghcr.io/berriai/litellm:v1.106.6
     container_name: litellm
     restart: unless-stopped
     depends_on:
@@ -233,7 +233,7 @@ services:
   # Mezmo AURA SRE AI Agent
   # ==========================================
   aura:
-    image: mezmo/aura:0.2.17
+    image: mezmo/aura:0.2.19
     container_name: aura
     restart: unless-stopped
     command:
@@ -398,7 +398,7 @@ services:
   # (web UI behind nginx at /langfuse, OTLP ingest for LiteLLM traces)
   # ==========================================
   langfuse-clickhouse:
-    image: clickhouse/clickhouse-server:25.12
+    image: clickhouse/clickhouse-server:26.3.62.3
     container_name: langfuse-clickhouse
     restart: unless-stopped
     user: "101:101"
@@ -549,7 +549,7 @@ services:
       - o11y-net
 
   mcp-grafana:
-    image: grafana/mcp-grafana:1.4.1
+    image: grafana/mcp-grafana:2.1.1
     container_name: mcp-grafana
     restart: unless-stopped
     command: ["-t", "sse", "-address", "0.0.0.0:8000", "-allowed-hosts", "*"]
@@ -597,7 +597,7 @@ services:
       - o11y-net
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
     container_name: cadvisor
     restart: unless-stopped
     privileged: true
@@ -616,7 +616,7 @@ services:
       - o11y-net
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.160.0
+    image: otel/opentelemetry-collector-contrib:0.164.0
     container_name: otel-collector
     restart: unless-stopped
     user: "0:0"
@@ -635,7 +635,7 @@ services:
       - o11y-net
 
   beyla:
-    image: grafana/beyla:3.35.0
+    image: grafana/beyla:3.40.0
     container_name: beyla
     restart: unless-stopped
     pid: host
@@ -654,7 +654,7 @@ services:
   # Vector Log Collector (Docker Logs -> VictoriaLogs)
   # ==========================================
   vector:
-    image: timberio/vector:0.58.0-alpine
+    image: timberio/vector:0.61.0-alpine
     container_name: vector
     restart: unless-stopped
     user: "0:0"
@@ -673,7 +673,7 @@ services:
   # Nginx Reverse Proxy with SSL & Basic Auth
   # ==========================================
   nginx:
-    image: nginx:1.31.5-alpine
+    image: nginx:1.31.8-alpine
     container_name: nginx
     restart: unless-stopped
     ports:
@@ -701,7 +701,7 @@ services:
   # DuckDNS Dynamic DNS Updater
   # ==========================================
   duckdns:
-    image: lscr.io/linuxserver/duckdns:version-73f1bc7d
+    image: lscr.io/linuxserver/duckdns:version-8aabc87c
     container_name: duckdns
     restart: unless-stopped
     environment:

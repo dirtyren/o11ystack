@@ -197,7 +197,7 @@ Expected output:
 ```json
 {
   "status": "healthy",
-  "aura_version": "0.2.17",
+  "aura_version": "0.2.19",
   "a2a_server": { "version": "1.0" },
   "session_store": { "backend": "memory", "ping": { "ok": true } }
 }

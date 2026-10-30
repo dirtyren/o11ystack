@@ -19,7 +19,7 @@ needs 4 more containers).
 
 - **LLM calls** → LiteLLM has a *native* Langfuse logger (`callbacks: ["langfuse"]`) and a
   richer OTel-based preset (`callbacks: ["langfuse_otel"]`). Verified present in the
-  running image `ghcr.io/berriai/litellm:v1.100.1`.
+  running image `ghcr.io/berriai/litellm:v1.106.6`.
 - **MCP tool calls** → the gateway already counts them (`litellm_mcp_tool_calls_total`,
   live in VictoriaMetrics) and stores one spend-log row per call with
   `mcp_namespaced_tool_name`. Span-level MCP tracing (tools/call + tools/list with
@@ -39,13 +39,13 @@ needs 4 more containers).
 
 | Item | Evidence |
 |---|---|
-| LiteLLM | `ghcr.io/berriai/litellm:v1.100.1`, callbacks = `["prometheus"]` only, prometheus callback on |
+| LiteLLM | `ghcr.io/berriai/litellm:v1.106.6`, callbacks = `["prometheus"]` only, prometheus callback on |
 | MCP call metrics | `litellm_mcp_tool_calls_total` series present in VictoriaMetrics, labels `mcp_server_name` + `mcp_tool_name`, e.g. victorialogs/query=75, stats_query=39, field_values=15, hits=10; grafana/query_prometheus=18; headroom/headroom_compress=8, headroom_stats=1; victoriametrics/metrics=6 — 17 distinct tool series |
 | MCP spend logs | `LiteLLM_SpendLogs`: `call_mcp_tool`=557 rows, `list_mcp_tools`=197, `acompletion`=1158; column `mcp_namespaced_tool_name` exists |
 | Prompt capture | `store_prompts_in_spend_logs: true`, 7-day retention (LiteLLM Postgres only) |
 | MCP traffic path | **All** MCP traffic from AURA goes through the LiteLLM gateway (`aura/config.toml` → `http://litellm:4000/<server>/mcp`); OpenSRE → `litellm:4000/headroom/mcp`. Single choke point = single instrumentation point |
 | OTel plumbing | `otel-collector` already receives OTLP (4317/4318); traces → VictoriaTraces, metrics → VictoriaMetrics (remote write), logs → VictoriaLogs |
-| Grafana | 13.2.1, file-provisioned datasources: VictoriaMetrics (prom), VictoriaLogs, VictoriaTraces (tempo + jaeger) |
+| Grafana | 13.3.0, file-provisioned datasources: VictoriaMetrics (prom), VictoriaLogs, VictoriaTraces (tempo + jaeger) |
 | Host capacity | 11 GiB RAM total, 6 vCPU, containers use ~4.5 GiB (litellm 1.09 GiB largest), 5.9 GiB available, **swap = 0 B**, 136 GB disk free |
 
 What is *not* available today: no prompt/response-level LLM tracing, no MCP span traces
@@ -147,7 +147,7 @@ nothing else gets into Langfuse, and VictoriaTraces stops receiving LLM/MCP span
   (Beyla and AURA spans share the pipeline).
 
 ### 5.3 Langfuse v4 self-host (docker-compose, 4 new services)
-- `langfuse-web:4`, `langfuse-worker:4` (docker.langfuse.com), `clickhouse:25.12`,
+- `langfuse-web:4`, `langfuse-worker:4` (docker.langfuse.com), `clickhouse:26.3.62.3`,
   `minio` — plus **reuse** existing `postgres` (new `langfuse` DB + role) and existing
   `redis` (separate logical DB) OR dedicated small redis if queue isolation is preferred.
 - Required secrets: `NEXTAUTH_SECRET`, `SALT`, `ENCRYPTION_KEY` (`openssl rand -hex 32`),

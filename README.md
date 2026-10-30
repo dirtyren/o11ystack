@@ -1,9 +1,9 @@
 # Observability & AI Stack (o11ystack)
 
 [![Docker Compose](https://img.shields.io/badge/docker--compose-v2.0%2B-blue.svg)](https://docs.docker.com/compose/)
-[![VictoriaMetrics](https://img.shields.io/badge/VictoriaMetrics-v1.151%2B-orange.svg)](https://victoriametrics.com/)
-[![VictoriaLogs](https://img.shields.io/badge/VictoriaLogs-v1.52%2B-brightgreen.svg)](https://docs.victoriametrics.com/victorialogs/)
-[![VictoriaTraces](https://img.shields.io/badge/VictoriaTraces-v0.10%2B-blueviolet.svg)](https://docs.victoriametrics.com/victoriatraces/)
+[![VictoriaMetrics](https://img.shields.io/badge/VictoriaMetrics-v1.155%2B-orange.svg)](https://victoriametrics.com/)
+[![VictoriaLogs](https://img.shields.io/badge/VictoriaLogs-v1.53%2B-brightgreen.svg)](https://docs.victoriametrics.com/victorialogs/)
+[![VictoriaTraces](https://img.shields.io/badge/VictoriaTraces-v0.12%2B-blueviolet.svg)](https://docs.victoriametrics.com/victoriatraces/)
 [![Grafana](https://img.shields.io/badge/Grafana-Latest%20Stable-F46800.svg)](https://grafana.com/)
 [![LiteLLM](https://img.shields.io/badge/LiteLLM-Proxy-black.svg)](https://litellm.ai/)
 [![Mezmo AURA](https://img.shields.io/badge/Mezmo-AURA%20SRE%20Agent-5B5FEF.svg)](https://github.com/mezmo/aura)
@@ -138,26 +138,34 @@ flowchart TD
 
 | Service | Docker Image | Port / Transport | Storage & Retention | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| **VictoriaMetrics** | `victoriametrics/victoria-metrics:v1.152.0` | `8428/tcp` | `/var/lib/vmetrics` (1 Year) | Single-node metrics TSDB with PromQL and remote write APIs. |
-| **VictoriaLogs** | `victoriametrics/victoria-logs:v1.52.0` | `9428/tcp` | `/var/lib/vlogs` (1 Year) | Fast, cost-efficient log database with LogSQL and OTLP log ingestion. |
-| **VictoriaTraces** | `victoriametrics/victoria-traces:v0.11.0` | `10428/tcp` (HTTP), `4317/tcp` (gRPC) | `/var/lib/vtraces` (1 Year) | High-throughput distributed tracing DB supporting OTLP, Tempo, and Jaeger APIs. |
-| **Grafana** | `grafana/grafana:13.2.1` | `3000/tcp` | `grafana-data` volume + MySQL 8.0 | Latest stable Grafana with pre-provisioned datasources for Victorias. |
+| **VictoriaMetrics** | `victoriametrics/victoria-metrics:v1.155.0` | `8428/tcp` | `/var/lib/vmetrics` (1 Year) | Single-node metrics TSDB with PromQL and remote write APIs. |
+| **VictoriaLogs** | `victoriametrics/victoria-logs:v1.53.0` | `9428/tcp` | `/var/lib/vlogs` (1 Year) | Fast, cost-efficient log database with LogSQL and OTLP log ingestion. |
+| **VictoriaTraces** | `victoriametrics/victoria-traces:v0.12.1` | `10428/tcp` (HTTP), `4317/tcp` (gRPC) | `/var/lib/vtraces` (1 Year) | High-throughput distributed tracing DB supporting OTLP, Tempo, and Jaeger APIs. |
+| **Grafana** | `grafana/grafana:13.3.0` | `3000/tcp` | `grafana-data` volume + MySQL 8.0 | Latest stable Grafana with pre-provisioned datasources for Victorias & CVE patches. |
 | **MySQL Backend** | `mysql:8.0.46` | `3306/tcp` | `mysql-data` volume | Dedicated relational database backend for Grafana state, users, and dashboards. |
-| **LiteLLM Proxy** | `ghcr.io/berriai/litellm:v1.100.1` | `4000/tcp` | PostgreSQL 16 backend | Multi-provider LLM gateway configured with all 4 MCP servers and free model list. |
+| **LiteLLM Proxy** | `ghcr.io/berriai/litellm:v1.106.6` | `4000/tcp` | PostgreSQL 16 backend | Multi-provider LLM gateway configured with all 4 MCP servers and free model list. |
 | **PostgreSQL** | `postgres:16.15-alpine` | `5432/tcp` | `postgres-data` volume | Relational database backend for LiteLLM key management and call tracking. |
-| **Redis Cache** | `redis:7.4.11-alpine` | `6379/tcp` | `redis-data` volume | In-memory cache for LiteLLM response caching, spend counters, and cross-replica coordination. |
-| **Mezmo AURA** | `mezmo/aura:0.2.17` | `8080/tcp` | `/tmp/aura` memory | Autonomous SRE agent with multi-worker orchestration connected to all MCP servers. |
+| **Redis Cache** | `redis:7.4.12-alpine` | `6379/tcp` | `redis-data` volume | In-memory cache for LiteLLM response caching, spend counters, and cross-replica coordination. |
+| **Mezmo AURA** | `mezmo/aura:0.2.19` | `8080/tcp` | `/tmp/aura` memory | Autonomous SRE agent with multi-worker orchestration connected to all MCP servers. |
+| **OpenSRE** | Built from `./opensre` | `8000/tcp` | Stateless | Open-source SRE agent for incident triage, root cause analysis, and remediation. |
+| **Headroom Proxy** | `ghcr.io/headroomlabs-ai/headroom:latest` | `8787/tcp` | `headroom-state` volume | Semantic context compression proxy optimizing LLM prompt token consumption. |
+| **Headroom MCP** | `ghcr.io/headroomlabs-ai/headroom:latest` | `8788/tcp` (HTTP) | `headroom-state` volume | MCP server exposing context compression, retrieval, and savings ledger tools. |
+| **Langfuse Web** | `o11ystack/langfuse-web:4-langfuse-path` | `3000/tcp` (internal) | PostgreSQL 16 + ClickHouse | Open-source LLM engineering platform (tracing, evals, prompt management). |
+| **Langfuse Worker** | `docker.langfuse.com/langfuse/langfuse-worker:4` | `3030/tcp` (internal) | ClickHouse + MinIO | Background ingestion worker for Langfuse traces, metrics, and batch events. |
+| **Langfuse ClickHouse** | `clickhouse/clickhouse-server:26.3.62.3` | `8123/tcp`, `9000/tcp` | `langfuse-clickhouse-data` volume | Analytical database for high-throughput Langfuse LLM trace and span analytics. |
+| **Langfuse MinIO** | `bitnamilegacy/minio:2025.7.23` | `9000/tcp` | `langfuse-minio-data` volume | S3-compatible object storage for Langfuse large payloads and event blobs. |
 | **MCP VictoriaMetrics** | `ghcr.io/victoriametrics/mcp-victoriametrics:v1.20.2` | `8080/tcp` (SSE) | Stateless | Exposes PromQL queries, metrics metadata, cardinalities, and docs as MCP tools. |
 | **MCP VictoriaLogs** | `ghcr.io/victoriametrics/mcp-victorialogs:v1.9.0` | `8081/tcp` (SSE) | Stateless | Exposes log stream queries, LogSQL filter expressions, and statistics to LLMs. |
 | **MCP VictoriaTraces** | `ghcr.io/victoriametrics-community/mcp-victoriatraces:v1.5.0` | `8082/tcp` (SSE) | Stateless | Exposes operations, service dependency graphs, and span retrieval to LLMs. |
-| **MCP Grafana** | `grafana/mcp-grafana:1.4.1` | `8000/tcp` (SSE) | Stateless | Admin-level Grafana MCP server capable of managing dashboards, alerts, and queries. |
+| **MCP Grafana** | `grafana/mcp-grafana:2.1.1` | `8000/tcp` (SSE) | Stateless | Official MCP Go SDK v2 Grafana server managing dashboards, alerts, and queries. |
 | **Node Exporter** | `prom/node-exporter:v1.12.1` | `9100/tcp` | Host `/proc`, `/sys`, `/` | Server hardware telemetry (CPU, RAM, Disks, Networks). |
 | **Process Exporter** | `ncabatoff/process-exporter:v0.8.7` | `9256/tcp` | Host `/proc`, `pid: host` | Per-process CPU, memory, IO, and fd consumption. |
-| **cAdvisor** | `gcr.io/cadvisor/cadvisor:v0.49.1` | `8080/tcp` | Host `/sys`, `/var/lib/docker`, `/dev/disk` | Per-container cgroup resource limits, CPU throttling, and working set memory telemetry. |
-| **OTel Collector** | `otel/opentelemetry-collector-contrib:0.160.0` | `4317/tcp`, `4318/tcp` | Host `/var/log` | Pipelines server metrics, logs, and distributed traces into Victoria databases. |
-| **Vector** | `timberio/vector:0.58.0-alpine` | `8686/tcp` | `vector-data` volume | High-performance log collector streaming all Docker Compose container stdout/stderr into VictoriaLogs. |
-| **Grafana Beyla** | `grafana/beyla:3.35.0` | Host eBPF Probes | Linux Kernel | Zero-code, automatic eBPF tracing of all processes (HTTP/gRPC/SQL). |
-| **Nginx** | `nginx:1.31.5-alpine` | `80/tcp`, `443/tcp` | SSL Certs + `.htpasswd` | Reverse proxy with default SSL, prefix routing, and Basic Auth protection. |
+| **cAdvisor** | `gcr.io/cadvisor/cadvisor:v0.55.1` | `8080/tcp` | Host `/sys`, `/var/lib/docker`, `/dev/disk` | Per-container cgroup resource limits, CPU throttling, and working set memory telemetry. |
+| **OTel Collector** | `otel/opentelemetry-collector-contrib:0.164.0` | `4317/tcp`, `4318/tcp` | Host `/var/log` | Pipelines server metrics, logs, and distributed traces into Victoria databases. |
+| **Vector** | `timberio/vector:0.61.0-alpine` | `8686/tcp` | `vector-data` volume | High-performance log collector streaming all Docker Compose container stdout/stderr into VictoriaLogs. |
+| **Grafana Beyla** | `grafana/beyla:3.40.0` | Host eBPF Probes | Linux Kernel | Zero-code, automatic eBPF tracing of all processes (HTTP/gRPC/SQL). |
+| **Nginx** | `nginx:1.31.8-alpine` | `80/tcp`, `443/tcp` | SSL Certs + `.htpasswd` | Reverse proxy with default SSL, prefix routing, and Basic Auth protection. |
+| **DuckDNS Updater** | `lscr.io/linuxserver/duckdns:version-8aabc87c` | Background | Stateless | Dynamic DNS updater keeping `*.duckdns.org` synchronized with host WAN IP. |
 
 > [!NOTE]
 > All images in the stack are strictly pinned to verified semantic versions for predictable deployments, safe migrations, and deterministic rollbacks. For detailed breaking changes analysis, database persistence nuances, and step-by-step upgrade procedures, refer to the [Migration & Version Pinning Guide](docs/MIGRATION_GUIDE.md).
@@ -690,7 +698,7 @@ cAdvisor inspects running containers via the Docker socket and cgroup filesystem
 ```yaml
 services:
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
     container_name: cadvisor
     restart: unless-stopped
     privileged: true
